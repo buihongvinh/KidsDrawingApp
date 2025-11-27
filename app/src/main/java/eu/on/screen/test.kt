@@ -128,6 +128,10 @@ class DrawTestService : Service() {
             }
         }
 
+        // Initialize SharedPreferences first
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+        editor = sharedPreferences?.edit()
+        
         mFloatingView = LayoutInflater.from(this).inflate(R.layout.floating_button, null)
         drawingView = mFloatingView!!.findViewById(R.id.drawing_view)
         mAddFab = mFloatingView!!.findViewById(R.id.add_fab)
@@ -144,6 +148,10 @@ class DrawTestService : Service() {
         mHide = mFloatingView!!.findViewById(R.id.btn_hide)
         mExits = mFloatingView!!.findViewById(R.id.btn_left)
 
+        // Apply FAB size from preferences
+        val fabSize = sharedPreferences!!.getInt("fabSize", 1) // Default: normal
+        applyFabSize(fabSize)
+        
         mPenFab?.visibility = View.GONE
         mPickColorFab?.visibility = View.GONE
         mPickSharpFab?.visibility = View.GONE
@@ -169,9 +177,7 @@ class DrawTestService : Service() {
 
         var window = getSystemService(WINDOW_SERVICE) as WindowManager
         val displayMetrics = window?.currentWindowMetrics?.bounds
-        sharedPreferences =
-            PreferenceManager.getDefaultSharedPreferences(this)
-        editor = sharedPreferences?.edit()
+        // sharedPreferences already initialized above
 
         val fullWidth = displayMetrics?.width()
         val fullHeight = displayMetrics?.height()
@@ -766,5 +772,33 @@ fun showToast(context: Context, message: String) {
     } catch (e: Exception) {
         // Fallback if toast fails
         Log.e("Toast", "Failed to show toast: ${e.message}")
+    }
+}
+
+fun DrawTestService.applyFabSize(size: Int) {
+    val fabSizeValue = when (size) {
+        0 -> com.google.android.material.floatingactionbutton.FloatingActionButton.SIZE_MINI
+        1 -> com.google.android.material.floatingactionbutton.FloatingActionButton.SIZE_NORMAL
+        2 -> com.google.android.material.floatingactionbutton.FloatingActionButton.SIZE_NORMAL // Use normal for large
+        else -> com.google.android.material.floatingactionbutton.FloatingActionButton.SIZE_NORMAL
+    }
+    
+    // Set size programmatically for all FABs
+    val fabList = listOf(mAddFab, mPenFab, mPickColorFab, mPickSharpFab, mEarseFab, 
+        mUndoFab, mRedoFab, mDelete, mHide, mExits)
+    
+    fabList.forEach { fab ->
+        fab?.size = fabSizeValue
+    }
+    
+    // For large size (2), we need to use custom size
+    if (size == 2) {
+        val largeSizeDp = 64
+        val largeSizePx = (largeSizeDp * resources.displayMetrics.density).toInt()
+        fabList.forEach { fab ->
+            fab?.layoutParams?.width = largeSizePx
+            fab?.layoutParams?.height = largeSizePx
+            fab?.requestLayout()
+        }
     }
 }

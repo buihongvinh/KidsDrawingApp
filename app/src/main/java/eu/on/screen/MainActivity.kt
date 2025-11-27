@@ -124,6 +124,16 @@ class MainActivity : AppCompatActivity() {
         
         val dataList = mutableListOf<ListItemModel>()
 
+        // Add Settings item at the top
+        dataList.add(
+            ListItemModel(
+                R.drawable.settings,
+                "Floating Icon Size",
+                "Tap to customize the size of floating action buttons (Mini, Normal, or Large). Changes will apply after restarting the drawing overlay.",
+                false
+            )
+        )
+        
         dataList.add(
             ListItemModel(
                 R.drawable.undo,
@@ -199,6 +209,23 @@ class MainActivity : AppCompatActivity() {
 
         val adapter = SettingsAdapter(this, dataList)
         listView.adapter = adapter
+        
+        // Add click listener for ListView items
+        listView.onItemClickListener = AdapterView.OnItemClickListener { parent, view, position, id ->
+            // Account for header view (position 0 is header)
+            val itemPosition = position - 1 // Subtract 1 for header
+            
+            if (itemPosition >= 0 && itemPosition < dataList.size) {
+                val item = dataList[itemPosition]
+                
+                // Check if it's the Floating Icon Size setting
+                if (item.title == "Floating Icon Size") {
+                    showFabSizeDialog()
+                }
+                // Other items are just informational, no action needed
+            }
+        }
+        
         buttonCLick = findViewById(R.id.btnPlay)
         buttonCLick.setOnClickListener {
 
@@ -242,9 +269,60 @@ class MainActivity : AppCompatActivity() {
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.nav_settings) {
-            Toast.makeText(this, "Clicked Settings Icon..", Toast.LENGTH_SHORT).show()
+            try {
+                showFabSizeDialog()
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error showing FAB size dialog: ${e.message}", e)
+                Toast.makeText(this, "Error opening settings: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+            return true
         }
         return super.onOptionsItemSelected(item)
+    }
+    
+    private fun showFabSizeDialog() {
+        // Load saved FAB size (default: 1 = normal)
+        val savedFabSize = sharedPreferences?.getInt("fabSize", 1) ?: 1
+        
+        // Inflate custom layout
+        val dialogView = layoutInflater.inflate(R.layout.fab_size_dialog, null)
+        val seekBar = dialogView.findViewById<SeekBar>(R.id.seekBarFabSize)
+        val textSizeValue = dialogView.findViewById<TextView>(R.id.textFabSizeValue)
+        
+        seekBar.progress = savedFabSize
+        updateFabSizeText(textSizeValue, savedFabSize)
+        
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                updateFabSizeText(textSizeValue, progress)
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+        
+        // Create AlertDialog
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Select Floating Icon Size")
+            .setView(dialogView)
+            .setPositiveButton("Apply") { _, _ ->
+                val selectedSize = seekBar.progress
+                editor?.putInt("fabSize", selectedSize)?.commit()
+                Toast.makeText(this, "FAB size saved. Restart drawing to apply changes.", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+        
+        dialog.show()
+    }
+    
+    private fun updateFabSizeText(textView: TextView?, size: Int) {
+        val sizeText = when (size) {
+            0 -> "Mini (40dp)"
+            1 -> "Normal (56dp)"
+            2 -> "Large (64dp)"
+            else -> "Normal (56dp)"
+        }
+        textView?.text = sizeText
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
