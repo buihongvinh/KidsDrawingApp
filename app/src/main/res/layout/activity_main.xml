@@ -6,14 +6,53 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black">
+    android:background="@color/surface_color">
 
-    <FrameLayout
+    <!-- App Header -->
+    <LinearLayout
+        android:id="@+id/headerLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="32dp"
+        android:paddingBottom="16dp"
+        android:background="@color/surface_color"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/app_name"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary_light"
+            android:gravity="center"
+            android:letterSpacing="0.05" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Draw and write anywhere on your screen"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary_light"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+    <androidx.cardview.widget.CardView
         android:id="@+id/frameLayout"
         android:layout_width="match_parent"
-        android:layout_height="150dp"
-        android:background="@color/skin"
-        app:layout_constraintTop_toTopOf="parent"
+        android:layout_height="180dp"
+        android:layout_margin="16dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="@color/primary_gradient_start"
+        app:layout_constraintTop_toBottomOf="@id/headerLayout"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
@@ -23,12 +62,17 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:gravity="center"
-            android:layout_margin="8dp"
+            android:layout_margin="16dp"
             android:text="@string/start"
+            android:textSize="18sp"
+            android:textStyle="bold"
             app:icon="@drawable/play_arrow"
+            app:iconTint="@color/white"
+            app:backgroundTint="@color/white"
+            app:iconPadding="8dp"
             app:layout_anchorGravity="center" />
 
-    </FrameLayout>
+    </androidx.cardview.widget.CardView>
 
     <com.google.android.gms.ads.AdView
         android:id="@+id/adView"
@@ -45,7 +89,13 @@
         android:id="@+id/listView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:divider="@drawable/list_divider"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="12dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp"
+        android:clipToPadding="false"
+        android:scrollbars="none"
         app:layout_constraintTop_toBottomOf="@id/adView"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"

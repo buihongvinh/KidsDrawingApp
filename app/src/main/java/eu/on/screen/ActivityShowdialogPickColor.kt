@@ -30,6 +30,12 @@ class ColorPickerActivity : AppCompatActivity() {
        AmbilWarnaDialog(this, getSetColor,
                 object : AmbilWarnaDialog.OnAmbilWarnaListener {
                     override fun onCancel(dialog: AmbilWarnaDialog) {
+                        // Restore the drawing mode that was active before color picker
+                        val lastDrawingMode = sharedPreferences!!.getInt("lastDrawingMode", 4)
+                        val restoreIntent = Intent("action.PickShape")
+                        restoreIntent.putExtra("pickShape", lastDrawingMode)
+                        sendBroadcast(restoreIntent)
+                        
                         val intent = Intent("action.hideDraw")
                         intent.putExtra("hideDraw", viewModel.hideDraw.value)
                         sendBroadcast(intent)
@@ -39,6 +45,13 @@ class ColorPickerActivity : AppCompatActivity() {
                     override fun onOk(dialog: AmbilWarnaDialog, color: Int) {
                         callTosendColor(color)
                         println(color)
+                        
+                        // Restore the drawing mode that was active before color picker
+                        val lastDrawingMode = sharedPreferences!!.getInt("lastDrawingMode", 4)
+                        val restoreIntent = Intent("action.PickShape")
+                        restoreIntent.putExtra("pickShape", lastDrawingMode)
+                        sendBroadcast(restoreIntent)
+                        
                         val intent = Intent("action.hideDraw")
                         intent.putExtra("hideDraw", viewModel.hideDraw.value)
                         sendBroadcast(intent)

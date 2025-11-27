@@ -236,6 +236,11 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
             resources.displayMetrics
         )
         mDrawPaint!!.strokeWidth = mBrushSize
+        // Update current drawing path if it exists and is not empty
+        if (mDrawPath != null && !mDrawPath!!.isEmpty) {
+            mDrawPath!!.brushThickness = mBrushSize
+            invalidate() // Force redraw with new size
+        }
     }
 
     fun setSizeForBrushShape(newSize: Float) {
@@ -244,6 +249,11 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
             resources.displayMetrics
         )
         mDrawPaint!!.strokeWidth = mBrushSizeShape
+        // Update current drawing path if it exists and is not empty
+        if (mDrawPath != null && !mDrawPath!!.isEmpty) {
+            mDrawPath!!.brushThickness = mBrushSizeShape
+            invalidate() // Force redraw with new size
+        }
     }
     fun setSizeForBrushErase(newSize: Float) {
         mBrushSizeErase = TypedValue.applyDimension(
@@ -251,6 +261,11 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
             resources.displayMetrics
         )
         erasePaint!!.strokeWidth = mBrushSizeErase
+        // Update current drawing path if it exists and is not empty (for erase mode)
+        if (mDrawPath != null && !mDrawPath!!.isEmpty && typeDrawing == 5) {
+            // Erase size is stored separately, but we need to update the erase paint
+            invalidate()
+        }
     }
 
     fun setColor(newColor: Int) {
@@ -261,6 +276,11 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
 
         color = Color.argb(alpha, red, green, blue)
         mDrawPaint!!.color = color
+        // Update current drawing path if it exists and is not empty
+        if (mDrawPath != null && !mDrawPath!!.isEmpty) {
+            mDrawPath!!.color = color
+            invalidate() // Force redraw with new color
+        }
     }
     fun clearAllDrawings() {
         mPaths.clear() // Clear the main drawing paths
@@ -270,6 +290,11 @@ class DrawingView(context: Context, attrs: AttributeSet) : View(context, attrs) 
         invalidate() // Refresh the view
     }
     fun setShapeType(typeShape: Int) {
+        // If changing shape type while drawing, reset the current path
+        if (mDrawPath != null && !mDrawPath!!.isEmpty) {
+            mDrawPath!!.reset()
+            invalidate() // Clear current drawing
+        }
         typeDrawing = typeShape
         // 1 is line
         // 2 is Circle

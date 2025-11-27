@@ -14,7 +14,9 @@ import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -27,6 +29,7 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ImageButton
 import android.widget.SeekBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -240,6 +243,19 @@ class DrawTestService : Service() {
         }
 
         mPickColorFab!!.setOnClickListener { v ->
+            // Save current drawing mode before opening color picker
+            // Determine current mode: 4 = pen, 5 = erase, 2 = circle, 3 = rectangle, 1 = line
+            var currentMode = 4 // default to pen
+            if (isPen) {
+                currentMode = 4
+            } else if (isChooseErase) {
+                currentMode = 5
+            } else if (isChooseShape) {
+                currentMode = sharedPreferences!!.getInt("shapeType", 2)
+            }
+            editor?.putInt("lastDrawingMode", currentMode)
+            editor?.commit()
+            
             val intent = Intent("action.hideDraw")
           //  hideDraw = true
             intent.putExtra("hideDraw", true)
@@ -475,23 +491,35 @@ class DrawTestService : Service() {
 
         val brushDialog = Dialog(this@DrawTestService)
         brushDialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        
+        // Set dialog width to ensure buttons don't wrap
+        val displayMetrics = resources.displayMetrics
+        val dialogWidth = (displayMetrics.widthPixels * 0.85).toInt()
+        brushDialog.window?.setLayout(dialogWidth, WindowManager.LayoutParams.WRAP_CONTENT)
 
         brushDialog.setContentView(R.layout.brush_size_dialog)
         val seekBarBrushSize = brushDialog.findViewById<SeekBar>(R.id.seekBarBrushSize)
+        val textSizeLabel = brushDialog.findViewById<TextView>(R.id.textSizeLabel)
+        val textSizeValue = brushDialog.findViewById<TextView>(R.id.textSizeValue)
+        
+        // Set label text
+        textSizeLabel?.text = "Select Brush Size"
+        
         // Load saved SeekBar value from shared preferences
-        // Load saved SeekBar value from shared preferences
-
-        var savedSeekBarValue: Int = sharedPreferences!!.getInt("seekBarValue", 10)
+        // Read from setSizeForBrush to sync with DrawService
+        var savedSeekBarValue: Int = sharedPreferences!!.getInt("setSizeForBrush", 10)
         seekBarBrushSize.progress = savedSeekBarValue
+        textSizeValue?.text = savedSeekBarValue.toString()
+        
         val buttonApply = brushDialog.findViewById<Button>(R.id.buttonApply)
         val buttonCancel = brushDialog.findViewById<Button>(R.id.buttonCancel)
 
-        brushDialog.setTitle("Brush size :${seekBarBrushSize.progress}")
+        brushDialog.setTitle("Brush Size")
 
         seekBarBrushSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
-                brushDialog.setTitle("Brush size :$p1")
-
+                textSizeValue?.text = p1.toString()
+                brushDialog.setTitle("Brush Size: $p1")
             }
 
             override fun onStartTrackingTouch(p0: SeekBar?) {
@@ -508,8 +536,10 @@ class DrawTestService : Service() {
             val intent = Intent("action.setSize")
             intent.putExtra("setSize", selectedBrushSize)
             sendBroadcast(intent)
+            // Save to both keys for backward compatibility
             editor?.putInt("seekBarValue", selectedBrushSize)
-            editor?.apply()
+            editor?.putInt("setSizeForBrush", selectedBrushSize)
+            editor?.commit() // Use commit() instead of apply() for immediate sync
             brushDialog.dismiss()
         }
         buttonCancel.setOnClickListener {
@@ -544,24 +574,34 @@ class DrawTestService : Service() {
     private fun showEraseSizeChooserDialog() {
 
         val brushDialog = Dialog(this@DrawTestService)
-        brushDialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
+        brushDialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        
+        // Set dialog width to ensure buttons don't wrap
+        val displayMetrics = resources.displayMetrics
+        val dialogWidth = (displayMetrics.widthPixels * 0.85).toInt()
+        brushDialog.window?.setLayout(dialogWidth, WindowManager.LayoutParams.WRAP_CONTENT)
 
         brushDialog.setContentView(R.layout.brush_size_dialog)
         val seekBarBrushSize = brushDialog.findViewById<SeekBar>(R.id.seekBarBrushSize)
-        // Load saved SeekBar value from shared preferences
-        // Load saved SeekBar value from shared preferences
-
+        val textSizeLabel = brushDialog.findViewById<TextView>(R.id.textSizeLabel)
+        val textSizeValue = brushDialog.findViewById<TextView>(R.id.textSizeValue)
+        
+        // Set label text
+        textSizeLabel?.text = "Select Eraser Size"
+        
         var savedSeekBarValue: Int = sharedPreferences!!.getInt("seekBarEraseValue", 10)
         seekBarBrushSize.progress = savedSeekBarValue
+        textSizeValue?.text = savedSeekBarValue.toString()
+        
         val buttonApply = brushDialog.findViewById<Button>(R.id.buttonApply)
         val buttonCancel = brushDialog.findViewById<Button>(R.id.buttonCancel)
 
-        brushDialog.setTitle("Erase size :${seekBarBrushSize.progress}")
+        brushDialog.setTitle("Eraser Size")
 
         seekBarBrushSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
-                brushDialog.setTitle("Erase size :$p1")
-
+                textSizeValue?.text = p1.toString()
+                brushDialog.setTitle("Eraser Size: $p1")
             }
 
             override fun onStartTrackingTouch(p0: SeekBar?) {
@@ -592,15 +632,24 @@ class DrawTestService : Service() {
 
         val brushDialog = Dialog(this@DrawTestService)
         brushDialog.window?.setType(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY)
+        
+        // Set dialog width to ensure buttons don't wrap
+        val displayMetrics = resources.displayMetrics
+        val dialogWidth = (displayMetrics.widthPixels * 0.85).toInt()
+        brushDialog.window?.setLayout(dialogWidth, WindowManager.LayoutParams.WRAP_CONTENT)
 
         brushDialog.setContentView(R.layout.pick_shape_dialog)
         val seekBarBrushSize = brushDialog.findViewById<SeekBar>(R.id.seekBarBrushSizeShape)
-        // Load saved SeekBar value from shared preferences
-        // Load saved SeekBar value from shared preferences
-        //   val intent = Intent("action.PickShape")
-
+        val textShapeSizeLabel = brushDialog.findViewById<TextView>(R.id.textShapeSizeLabel)
+        val textShapeSizeValue = brushDialog.findViewById<TextView>(R.id.textShapeSizeValue)
+        
+        // Set label text
+        textShapeSizeLabel?.text = "Select Shape Size"
+        
         var savedSeekBarValue: Int = sharedPreferences!!.getInt("seekBarValueShape", 5)
         seekBarBrushSize.progress = savedSeekBarValue
+        textShapeSizeValue?.text = savedSeekBarValue.toString()
+        
         val buttonApply = brushDialog.findViewById<Button>(R.id.buttonApplyShape)
         val buttonCancel = brushDialog.findViewById<Button>(R.id.buttonCancelShape)
         val btnCheckBox = brushDialog.findViewById<CheckBox>(R.id.checkBox)
@@ -657,11 +706,12 @@ class DrawTestService : Service() {
             intent.putExtra("pickShape", 1)
             sendBroadcast(intent)
         }
-        brushDialog.setTitle("Brush size :${seekBarBrushSize.progress}")
+        brushDialog.setTitle("Shape Size")
 
         seekBarBrushSize.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
-                brushDialog.setTitle("Brush size :$p1")
+                textShapeSizeValue?.text = p1.toString()
+                brushDialog.setTitle("Shape Size: $p1")
             }
 
             override fun onStartTrackingTouch(p0: SeekBar?) {
@@ -705,5 +755,16 @@ class DrawTestService : Service() {
 }
 
 fun showToast(context: Context, message: String) {
-    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    // Use Handler to ensure toast is shown on main thread
+    // For overlay services, we need to use application context
+    try {
+        Handler(Looper.getMainLooper()).post {
+            val toast = Toast.makeText(context.applicationContext, message, Toast.LENGTH_SHORT)
+            toast.setGravity(Gravity.CENTER, 0, 0)
+            toast.show()
+        }
+    } catch (e: Exception) {
+        // Fallback if toast fails
+        Log.e("Toast", "Failed to show toast: ${e.message}")
+    }
 }

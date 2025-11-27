@@ -122,19 +122,24 @@ class DrawService : Service() {
                     }
                 } else if (intent?.action.equals("action.setSize")) {
                     val setSize = intent?.getIntExtra("setSize", 10)
-                    editor?.putInt("setSizeForBrush", setSize!!)
-                    editor?.apply()
-                    drawingView?.setSizeForBrush(setSize!!.toFloat())
+                    if (setSize != null) {
+                        // Use commit() instead of apply() to ensure synchronous write
+                        // This prevents cache issues where old values are read before new value is saved
+                        sharedPreferences?.edit()?.putInt("setSizeForBrush", setSize)?.commit()
+                        drawingView?.setSizeForBrush(setSize.toFloat())
+                    }
 
                 } else if (intent?.action.equals("action.setSizeShape")) {
                     val setSize = intent?.getIntExtra("setSizeShape", 10)
-                    drawingView?.setSizeForBrushShape(setSize!!.toFloat())
+                    if (setSize != null) {
+                        drawingView?.setSizeForBrushShape(setSize.toFloat())
+                    }
 
                 } else if (intent?.action.equals("action.PickColor")) {
                     var setSize = intent?.getIntExtra("pickColor", 10)
-                    if (setSize != null) {
-                        editor?.putInt("setColor", setSize!!)
-                        editor?.apply()
+                    if (setSize != null && setSize != 10) {
+                        // Use commit() instead of apply() to ensure synchronous write
+                        sharedPreferences?.edit()?.putInt("setColor", setSize)?.commit()
                         drawingView?.setColor(setSize)
                     }
                 } else if (intent?.action.equals("action.PickShape")) {
@@ -146,8 +151,8 @@ class DrawService : Service() {
                 else if (intent?.action.equals("action.setSizeErase")){
                     var setShape = intent?.getIntExtra("setSizeErase", 20)
                     if (setShape != null) {
-                        editor?.putInt("setSizeForBrushErase", setShape!!)
-                        editor?.apply()
+                        // Use commit() instead of apply() to ensure synchronous write
+                        sharedPreferences?.edit()?.putInt("setSizeForBrushErase", setShape)?.commit()
                         drawingView?.setSizeForBrushErase(setShape.toFloat())
                     }
 

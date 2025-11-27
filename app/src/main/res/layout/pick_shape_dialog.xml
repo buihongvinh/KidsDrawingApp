@@ -7,95 +7,133 @@
 
     <TextView
         android:id="@+id/textView"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="20dp"
-        android:layout_marginTop="32dp"
-        android:text="Select Stoke"
-        android:textSize="16dp"
-        android:layout_margin="20dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="20dp"
+        android:text="Select Shape Type"
+        android:textSize="18sp"
         android:textStyle="bold"
-
-    app:layout_constraintStart_toStartOf="parent"
+        android:gravity="center"
+        android:textColor="#212121"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/textShapeSizeLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="20dp"
+        android:text="Select Shape Size"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:textColor="#424242"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView" />
+
+    <TextView
+        android:id="@+id/textShapeSizeValue"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="20dp"
+        android:text="10"
+        android:textSize="16sp"
+        android:textColor="#616161"
+        android:gravity="center"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textShapeSizeLabel" />
 
     <SeekBar
         android:id="@+id/seekBarBrushSizeShape"
-        android:layout_width="300dp"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="24dp"
         android:max="50"
         android:min="1"
-        app:layout_constraintBottom_toTopOf="@+id/checkBox"
-
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
-    <Space
-        app:layout_constraintTop_toBottomOf="@+id/seekBarBrushSizeShape"
-
-        android:layout_width="match_parent"
-        android:layout_height="20dp">
-
-    </Space>
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textShapeSizeValue" />
 
     <CheckBox
         android:id="@+id/checkBox"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="8dp"
         android:checked="true"
         android:text="Circle"
-        app:layout_constraintBottom_toTopOf="@+id/checkBox2"
-
-        app:layout_constraintTop_toBottomOf="@+id/seekBarBrushSizeShape"
-        tools:layout_editor_absoluteX="20dp" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/seekBarBrushSizeShape" />
 
     <CheckBox
         android:id="@+id/checkBox2"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="8dp"
         android:text="Rectangle"
-        app:layout_constraintBottom_toTopOf="@+id/checkBox3"
-        tools:layout_editor_absoluteX="20dp" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/checkBox" />
 
     <CheckBox
         android:id="@+id/checkBox3"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="8dp"
         android:text="Line"
-        app:layout_constraintTop_toBottomOf="@+id/checkBox2"
-
-        />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/checkBox2" />
 
     <LinearLayout
-        android:layout_marginTop="20dp"
-
         android:id="@+id/linearLayout"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:gravity="center"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="16dp"
+        android:orientation="horizontal"
+        android:gravity="end|center_vertical"
         tools:ignore="ExtraText"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/checkBox3"
-
-        tools:layout_editor_absoluteX="32dp"
-        tools:layout_editor_absoluteY="294dp">
+        app:layout_constraintBottom_toBottomOf="parent">
 
         <Button
             android:id="@+id/buttonCancelShape"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="start"
-
+            android:layout_marginEnd="12dp"
+            android:minWidth="80dp"
             android:text="Cancel" />
-
-        <Space
-            android:layout_width="30dp"
-            android:layout_height="wrap_content" />
 
         <Button
             android:id="@+id/buttonApplyShape"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="end"
-
+            android:minWidth="80dp"
             android:text="Apply" />
     </LinearLayout>
 

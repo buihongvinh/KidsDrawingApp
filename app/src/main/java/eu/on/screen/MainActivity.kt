@@ -117,20 +117,85 @@ class MainActivity : AppCompatActivity() {
         adView.loadAd(adRequest)
         //   setSupportActionBar(findViewById(R.id.toolbar))
         val listView: ListView = findViewById(R.id.listView)
+        
+        // Add header to ListView
+        val headerView = layoutInflater.inflate(R.layout.list_header, null)
+        listView.addHeaderView(headerView, null, false)
+        
         val dataList = mutableListOf<ListItemModel>()
 
         dataList.add(
             ListItemModel(
-                R.drawable.settings,
-                "Display setting icon",
-                "back to setting when draw",
-                true
+                R.drawable.undo,
+                "Undo Button",
+                "Tap to undo your last drawing action. This button removes the most recent stroke or shape you drew, allowing you to correct mistakes easily.",
+                false
             )
         )
-        dataList.add(ListItemModel(R.drawable.undo, "Display undo button", "", true))
-        dataList.add(ListItemModel(R.drawable.redo, "Display redo button", "", false))
-        dataList.add(ListItemModel(R.drawable.interests, "Display shape button", "", true))
-        dataList.add(ListItemModel(R.drawable.infodraw, "Application introduction", "", false))
+        dataList.add(
+            ListItemModel(
+                R.drawable.redo,
+                "Redo Button",
+                "Tap to redo a previously undone action. If you accidentally undo something, use this button to restore it.",
+                false
+            )
+        )
+        dataList.add(
+            ListItemModel(
+                R.drawable.interests,
+                "Shape Button",
+                "Tap to switch to shape drawing mode. You can draw lines, circles, and rectangles. Tap again to adjust the size of shapes.",
+                false
+            )
+        )
+        dataList.add(
+            ListItemModel(
+                R.drawable.doodle,
+                "Pen/Draw Button",
+                "Tap to switch to free drawing mode. Use your finger to draw freely on the screen. Tap again to adjust brush size.",
+                false
+            )
+        )
+        dataList.add(
+            ListItemModel(
+                R.drawable.color_palette,
+                "Color Picker",
+                "Tap to open the color picker and choose a color for your drawings. Select from a wide range of colors to customize your artwork.",
+                false
+            )
+        )
+        dataList.add(
+            ListItemModel(
+                R.drawable.eraser,
+                "Eraser Tool",
+                "Tap to switch to eraser mode. Use your finger to erase parts of your drawing. Tap again to adjust eraser size.",
+                false
+            )
+        )
+        dataList.add(
+            ListItemModel(
+                R.drawable.bin,
+                "Delete All",
+                "Tap to clear all drawings on the screen. This action cannot be undone, so use it carefully.",
+                false
+            )
+        )
+        dataList.add(
+            ListItemModel(
+                R.drawable.hide,
+                "Hide/Show",
+                "Tap to hide or show the drawing overlay. When hidden, you can interact with other apps normally. Tap again to show the overlay.",
+                false
+            )
+        )
+        dataList.add(
+            ListItemModel(
+                R.drawable.logout,
+                "Exit Button",
+                "Tap to exit the drawing overlay and return to the main screen. Your drawings will be cleared when you exit.",
+                false
+            )
+        )
 
         val adapter = SettingsAdapter(this, dataList)
         listView.adapter = adapter
@@ -141,7 +206,7 @@ class MainActivity : AppCompatActivity() {
                 stopService(Intent(this, DrawService::class.java))
                 stopService(Intent(this, DrawTestService::class.java))
                 stopService(intent)
-                buttonCLick.setBackgroundColor(ContextCompat.getColor(this, R.color.teal_200));
+                buttonCLick.setBackgroundColor(ContextCompat.getColor(this, R.color.primary_gradient_start))
 
                 buttonCLick.text = "START"
                 buttonCLick.setTextColor(Color.WHITE)
