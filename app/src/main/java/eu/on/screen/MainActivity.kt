@@ -57,30 +57,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var adView: AdView
     private lateinit var appOpenManager: AppOpenManager
 
-    private var appOpenAd: AppOpenAd? = null
-
-    private var isAdDisplayed: Boolean = false
-    private val appOpenAdLoadCallback = object : AppOpenAdLoadCallback() {
-        override fun onAdLoaded(ad: AppOpenAd) {
-            appOpenAd = ad // Initialize the appOpenAd property here
-         //   appOpenAd!!.show(this@MainActivity)
-        }
-
-        override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-            // Handle ad loading failure
-        }
-    }
-
-    private fun loadAppOpenAd() {
-        val adRequest = AdRequest.Builder().build()
-        AppOpenAd.load(
-            this,
-            "/21849154601,23155531379/Ad.Plus-APP-APPOpen",
-            adRequest,
-            AppOpenAd.APP_OPEN_AD_ORIENTATION_PORTRAIT,
-            appOpenAdLoadCallback
-        )
-    }
+// Redundant ad loading removed, handled by AppOpenManager
 
 
 
@@ -99,14 +76,16 @@ class MainActivity : AppCompatActivity() {
             .build()
         actionBar?.show()
         setContentView(R.layout.activity_main)
+        
+        // Initialize appOpenManager
+        appOpenManager = AppOpenManager(this)
+        
         val backgroundScope = CoroutineScope(Dispatchers.IO)
         MobileAds.initialize(this) {}
-        loadAppOpenAd()
+        // Redundant ad loading removed
 
-        backgroundScope.launch {
-            // Initialize the Google Mobile Ads SDK on a background thread.
-            MobileAds.initialize(this@MainActivity) {}
-        }
+        // Initialize the Google Mobile Ads SDK on a background thread.
+        // MobileAds.initialize(this@MainActivity) {} // Removed redundant initialization
         // Find the AdView as defined in the layout XML
         adView = findViewById(R.id.adView)
 
@@ -361,13 +340,8 @@ class MainActivity : AppCompatActivity() {
             // Do not show the ad if it's already displayed
             return
         }
-        appOpenAd?.let {
-            it.show(this)
-        } ?: run {
-            // If the ad is null, load it again
-            loadAppOpenAd()
-        }
-        isServiceRunning = isServiceRunning(this, DrawService::class.java)
+        // Redundant ad showing removed, handled by AppOpenManager
+    isServiceRunning = isServiceRunning(this, DrawService::class.java)
 
         if (isServiceRunning) {
             Log.e("231", "service is running")

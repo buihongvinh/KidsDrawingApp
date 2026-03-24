@@ -179,8 +179,11 @@ class DrawService : Service() {
         intentFilter.addAction("action.undo") // Action2 to filter
         intentFilter.addAction("action.redo") // Action2 to filter
         intentFilter.addAction("action.delete") // Action2 to filter
-        registerReceiver(receiver, IntentFilter(intentFilter), RECEIVER_EXPORTED
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, IntentFilter(intentFilter), Context.RECEIVER_EXPORTED)
+        } else {
+            registerReceiver(receiver, IntentFilter(intentFilter))
+        }
 
         mWindowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         mWindowManager!!.addView(mFloatingView, params)
@@ -198,6 +201,6 @@ class DrawService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        unregisterReceiver(receiver)
+        receiver?.let { unregisterReceiver(it) }
     }
 }

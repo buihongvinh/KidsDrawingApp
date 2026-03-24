@@ -17,17 +17,26 @@ import com.google.android.gms.ads.MobileAds
 import java.util.*
 
 
-@RequiresApi(Build.VERSION_CODES.Q)
-class AppOpenManager(private val myApplication: MainActivity) :
+@RequiresApi(Build.VERSION_CODES.P)
+class AppOpenManager(context: Context) :
     Application.ActivityLifecycleCallbacks {
 
     private var appOpenAd: AppOpenAd? = null
     private var isLoadingAd: Boolean = false
     private var loadTime: Long = 0
+    private val appContext = context.applicationContext as Application
+
+    companion object {
+        private var isRegistered = false
+    }
 
     init {
-        myApplication.registerActivityLifecycleCallbacks(this)
-        MobileAds.initialize(myApplication) {}
+        // Correctly register on the Application object only once
+        if (!isRegistered) {
+            appContext.registerActivityLifecycleCallbacks(this)
+            isRegistered = true
+            MobileAds.initialize(appContext) {}
+        }
     }
 
     fun fetchAd() {
@@ -38,7 +47,7 @@ class AppOpenManager(private val myApplication: MainActivity) :
         isLoadingAd = true
         val adRequest = AdRequest.Builder().build()
         AppOpenAd.load(
-            myApplication,
+            appContext,
             "/21849154601,23155531379/Ad.Plus-APP-APPOpen",
             adRequest,
             AppOpenAd.APP_OPEN_AD_ORIENTATION_PORTRAIT,

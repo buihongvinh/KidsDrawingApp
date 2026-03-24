@@ -36,8 +36,8 @@ class Introduction : AppCompatActivity() {
         sharedPreferences =
             PreferenceManager.getDefaultSharedPreferences(this)
         editor = sharedPreferences?.edit()
-        var isIntroduction: Boolean = sharedPreferences!!.getBoolean("introduction", false)
-        if (isIntroduction) {
+        val introductionStatus = sharedPreferences?.getBoolean("introduction", false) ?: false
+        if (introductionStatus) {
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
             finish()
@@ -67,13 +67,16 @@ class Introduction : AppCompatActivity() {
         // make status bar transparent
         changeStatusBarColor()
         button?.setOnClickListener(View.OnClickListener {
-            if (viewPager?.currentItem!! < adapter!!.count) {
+            val currentViewPagerItem = viewPager?.currentItem ?: 0
+            val adapterCount = adapter?.count ?: 0
+            
+            if (currentViewPagerItem < adapterCount) {
                 Log.e(
                     "eee",
-                    adapter?.count.toString() + "total ()" + viewPager?.currentItem.toString()
+                    "$adapterCount total () $currentViewPagerItem"
                 )
 
-                viewPager?.currentItem = viewPager?.currentItem!! + 1
+                viewPager?.currentItem = currentViewPagerItem + 1
                 currentIndex++
             }
 
@@ -100,8 +103,8 @@ class Introduction : AppCompatActivity() {
             }
 
             override fun onPageSelected(position: Int) {
-
-                if (position == adapter!!.count - 1) {
+                val adapterCount = adapter?.count ?: 0
+                if (position == adapterCount - 1) {
                     button?.setText(R.string.get_started)
                 } else {
                     button?.setText(R.string.next)

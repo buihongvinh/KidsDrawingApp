@@ -487,7 +487,7 @@ class DrawTestService : Service() {
             }
 
             // Attach the gestureListener to handle touch movement
-            mAddFab!!!!.setOnTouchListener(gestureListener)
+            mAddFab!!.setOnTouchListener(gestureListener)
             true
         }
         mWindowManager!!.addView(mFloatingView, params)
@@ -746,15 +746,15 @@ class DrawTestService : Service() {
 
     @RequiresApi(Build.VERSION_CODES.S)
     override fun onDestroy() {
-        val params = WindowManager.LayoutParams(
-            0,
-            0,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        )
-        mFloatingView?.visibility = View.GONE
-        mWindowManager?.updateViewLayout(mFloatingView, params)
+        try {
+            mFloatingView?.let {
+                if (it.isAttachedToWindow) {
+                    mWindowManager?.removeView(it)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("DrawTestService", "Error removing floating view: ${e.message}")
+        }
         super.onDestroy()
     }
 
