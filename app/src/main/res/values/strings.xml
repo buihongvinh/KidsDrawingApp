@@ -25,7 +25,21 @@
         <string name="discover_text">Draw and write overlay any where on screen</string>
         <string name="shop_text">Easy change brush size</string>
         <string name="offers_text">Easy change color</string>
-        <string name="rewards_text">Undo,redo,delete,hide draw ...</string>
-        <string name="get_started">Get Started</string>
+    <string name="rewards_text">Undo,redo,delete,hide draw ...</string>
+    <string name="get_started">Get Started</string>
     <string name="ready_to_play">Ready to play</string>
+    <string name="home_badge">DRAW ON SCREEN</string>
+    <string name="home_title">Draw anywhere, without clutter</string>
+    <string name="home_subtitle">Start the floating canvas in one tap, then keep the rest of the screen calm and easy to understand.</string>
+    <string name="home_chip_overlay">Works above other apps</string>
+    <string name="home_chip_tools">Brush, color, erase, undo</string>
+    <string name="home_status_idle_title">Overlay is off</string>
+    <string name="home_status_idle_subtitle">Tap Start when you want to sketch on top of any app.</string>
+    <string name="home_status_active_title">Overlay is on</string>
+    <string name="home_status_active_subtitle">Floating tools are active. Tap Stop to close them.</string>
+    <string name="tools_header_title">Tools</string>
+    <string name="tools_header_subtitle">A short guide to the controls below.</string>
+    <string name="tools_list_title">Tool guide</string>
+    <string name="tools_list_subtitle">Only the essentials, explained clearly.</string>
+    <string name="stop">Stop</string>
 </resources>

@@ -46,5 +46,20 @@
 
     <color name="primary_color">@color/primary</color>
     <color name="text_primary">@color/primary_text</color>
+    <color name="home_background">#F6F7F9</color>
+    <color name="home_hero_start">#1F2937</color>
+    <color name="home_hero_end">#111827</color>
+    <color name="home_hero_surface">#FFFFFF</color>
+    <color name="home_panel_background">#FFFFFF</color>
+    <color name="home_primary">#111827</color>
+    <color name="home_card_stroke">#E5E7EB</color>
+    <color name="home_text_primary">#111827</color>
+    <color name="home_text_secondary">#6B7280</color>
+    <color name="home_success">#0F9D58</color>
+    <color name="home_danger">#D93025</color>
+    <color name="home_chip_background">#F3F4F6</color>
+    <color name="home_chip_text">#374151</color>
+    <color name="home_icon_background">#F3F4F6</color>
+    <color name="home_ad_background">#FFFFFF</color>
 
 </resources>

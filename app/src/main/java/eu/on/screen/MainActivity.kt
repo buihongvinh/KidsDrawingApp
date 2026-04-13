@@ -30,6 +30,7 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.res.ResourcesCompat
 import androidx.preference.PreferenceManager
 import com.codemybrainsout.ratingdialog.RatingDialog
 import com.google.android.gms.ads.AdRequest
@@ -56,7 +57,11 @@ class MainActivity : AppCompatActivity() {
     var editor: SharedPreferences.Editor? = null
     private lateinit var adView: AdView
     private lateinit var appOpenManager: AppOpenManager
+    private lateinit var statusContainer: LinearLayout
+    private lateinit var statusTitle: TextView
+    private lateinit var statusSubtitle: TextView
 
+    private var isAdDisplayed: Boolean = false
 // Redundant ad loading removed, handled by AppOpenManager
 
 
@@ -206,25 +211,17 @@ class MainActivity : AppCompatActivity() {
         }
         
         buttonCLick = findViewById(R.id.btnPlay)
+        statusContainer = findViewById(R.id.statusContainer)
+        statusTitle = findViewById(R.id.textStatusTitle)
+        statusSubtitle = findViewById(R.id.textStatusSubtitle)
+        renderServiceState()
         buttonCLick.setOnClickListener {
 
             if (isServiceRunning) {
                 stopService(Intent(this, DrawService::class.java))
                 stopService(Intent(this, DrawTestService::class.java))
-                stopService(intent)
-                buttonCLick.setBackgroundColor(ContextCompat.getColor(this, R.color.primary_gradient_start))
-
-                buttonCLick.text = "START"
-                buttonCLick.setTextColor(Color.WHITE)
-                val colorStateList =
-                    ColorStateList.valueOf(ContextCompat.getColor(this, R.color.white))
-
-                buttonCLick.iconTint = colorStateList
-                buttonCLick.icon =
-                    (ContextCompat.getDrawable(applicationContext, R.drawable.play_arrow));
-
                 isServiceRunning = !isServiceRunning
-                // to do stop
+                renderServiceState()
             } else {
                 checkOverlayPermission()
             }
@@ -337,35 +334,45 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         if (isAdDisplayed) {
-            // Do not show the ad if it's already displayed
             return
         }
-        // Redundant ad showing removed, handled by AppOpenManager
-    isServiceRunning = isServiceRunning(this, DrawService::class.java)
 
+        isServiceRunning = isServiceRunning(this, DrawService::class.java)
         if (isServiceRunning) {
             Log.e("231", "service is running")
-            buttonCLick.setBackgroundColor(Color.RED)
-            buttonCLick.text = "STOP"
-            buttonCLick.setTextColor(Color.WHITE)
-            val colorStateList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.white))
             val intentHide = Intent("action.hideDraw")
             intentHide.putExtra("hideDraw", true)
             sendBroadcast(intentHide)
-            buttonCLick.iconTint = colorStateList
-            buttonCLick.icon =
-                (ContextCompat.getDrawable(applicationContext, R.drawable.stop_circle));
-            // The service is running
-            // You can take appropriate actions here
         } else {
             Log.e("231", "not run is running")
-
-            // The service is not running
-            // You can take different actions here if needed
         }
+        renderServiceState()
     }
 
+    private fun renderServiceState() {
+        val isActive = isServiceRunning
+        val buttonColor = if (isActive) R.color.home_danger else R.color.home_hero_start
+        val iconRes = if (isActive) R.drawable.stop_circle else R.drawable.play_arrow
+        val titleRes =
+            if (isActive) R.string.home_status_active_title else R.string.home_status_idle_title
+        val subtitleRes =
+            if (isActive) R.string.home_status_active_subtitle else R.string.home_status_idle_subtitle
+        val statusBackgroundRes =
+            if (isActive) R.drawable.bg_home_status_active else R.drawable.bg_home_status_idle
+        val colorStateList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.white))
 
+        buttonCLick.backgroundTintList =
+            ColorStateList.valueOf(ContextCompat.getColor(this, buttonColor))
+        buttonCLick.setText(if (isActive) R.string.stop else R.string.start)
+        buttonCLick.setTextColor(Color.WHITE)
+        buttonCLick.iconTint = colorStateList
+        buttonCLick.setIconResource(iconRes)
+
+        statusTitle.setText(titleRes)
+        statusSubtitle.setText(subtitleRes)
+        statusContainer.background =
+            ResourcesCompat.getDrawable(resources, statusBackgroundRes, theme)
+    }
 
     private fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {
         val manager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager

@@ -180,9 +180,9 @@ class DrawService : Service() {
         intentFilter.addAction("action.redo") // Action2 to filter
         intentFilter.addAction("action.delete") // Action2 to filter
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(receiver, IntentFilter(intentFilter), Context.RECEIVER_EXPORTED)
+            registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
         } else {
-            registerReceiver(receiver, IntentFilter(intentFilter))
+            registerReceiver(receiver, intentFilter)
         }
 
         mWindowManager = getSystemService(WINDOW_SERVICE) as WindowManager
