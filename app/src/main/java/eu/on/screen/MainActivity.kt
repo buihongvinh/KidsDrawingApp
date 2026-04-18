@@ -33,10 +33,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.preference.PreferenceManager
 import com.codemybrainsout.ratingdialog.RatingDialog
-import com.google.android.gms.ads.AdRequest
-import com.google.android.gms.ads.AdView
-import com.google.android.gms.ads.LoadAdError
-import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.AdListener
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.admanager.AdManagerAdRequest
+import com.google.android.gms.ads.admanager.AdManagerAdView
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import eu.on.screen.model.ListItemModel
 import eu.on.screen.R
@@ -47,24 +47,18 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import com.google.android.gms.ads.appopen.AppOpenAd
-import com.google.android.gms.ads.appopen.AppOpenAd.AppOpenAdLoadCallback
 class MainActivity : AppCompatActivity() {
     private val REQUEST_OVERLAY_PERMISSION = 1001
     private var isServiceRunning = false
     lateinit var buttonCLick: ExtendedFloatingActionButton
     private var sharedPreferences: SharedPreferences? = null
     var editor: SharedPreferences.Editor? = null
-    private lateinit var adView: AdView
+    private var adView: AdManagerAdView? = null
     private lateinit var appOpenManager: AppOpenManager
+    private lateinit var adContainer: FrameLayout
     private lateinit var statusContainer: LinearLayout
     private lateinit var statusTitle: TextView
     private lateinit var statusSubtitle: TextView
-
-    private var isAdDisplayed: Boolean = false
-// Redundant ad loading removed, handled by AppOpenManager
-
-
 
     @SuppressLint("MissingInflatedId")
     @RequiresApi(Build.VERSION_CODES.O)
@@ -81,24 +75,11 @@ class MainActivity : AppCompatActivity() {
             .build()
         actionBar?.show()
         setContentView(R.layout.activity_main)
-        
-        // Initialize appOpenManager
-        appOpenManager = AppOpenManager(this)
-        
+
+        appOpenManager = (application as KidsDrawingApplication).appOpenManager
         val backgroundScope = CoroutineScope(Dispatchers.IO)
-        MobileAds.initialize(this) {}
-        // Redundant ad loading removed
-
-        // Initialize the Google Mobile Ads SDK on a background thread.
-        // MobileAds.initialize(this@MainActivity) {} // Removed redundant initialization
-        // Find the AdView as defined in the layout XML
-        adView = findViewById(R.id.adView)
-
-        // Create an ad request
-        val adRequest = AdRequest.Builder().build()
-
-        // Load the ad into the AdView
-        adView.loadAd(adRequest)
+        adContainer = findViewById(R.id.adContainer)
+        loadBannerAd()
         //   setSupportActionBar(findViewById(R.id.toolbar))
         val listView: ListView = findViewById(R.id.listView)
         
@@ -220,7 +201,7 @@ class MainActivity : AppCompatActivity() {
             if (isServiceRunning) {
                 stopService(Intent(this, DrawService::class.java))
                 stopService(Intent(this, DrawTestService::class.java))
-                isServiceRunning = !isServiceRunning
+                isServiceRunning = false
                 renderServiceState()
             } else {
                 checkOverlayPermission()
@@ -333,10 +314,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (isAdDisplayed) {
-            return
-        }
-
         isServiceRunning = isServiceRunning(this, DrawService::class.java)
         if (isServiceRunning) {
             Log.e("231", "service is running")
@@ -347,6 +324,49 @@ class MainActivity : AppCompatActivity() {
             Log.e("231", "not run is running")
         }
         renderServiceState()
+    }
+
+    override fun onPause() {
+        adView?.pause()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        adView?.destroy()
+        adView = null
+        super.onDestroy()
+    }
+
+    private fun loadBannerAd() {
+        adContainer.post {
+            val adWidthPixels = adContainer.width.takeIf { it > 0 }
+                ?: resources.displayMetrics.widthPixels - (40 * resources.displayMetrics.density).toInt()
+            val adWidth = (adWidthPixels / resources.displayMetrics.density).toInt()
+            if (adWidth <= 0) {
+                return@post
+            }
+
+            adView?.destroy()
+            val bannerView = AdManagerAdView(this).apply {
+                adUnitId = AdIds.BANNER
+                setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this@MainActivity, adWidth))
+                adListener = object : AdListener() {
+                    override fun onAdLoaded() {
+                        adContainer.visibility = View.VISIBLE
+                    }
+
+                    override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                        Log.w("MainActivity", "Banner failed to load: ${error.message}")
+                        adContainer.visibility = View.GONE
+                    }
+                }
+            }
+
+            adContainer.removeAllViews()
+            adContainer.addView(bannerView)
+            adView = bannerView
+            bannerView.loadAd(AdManagerAdRequest.Builder().build())
+        }
     }
 
     private fun renderServiceState() {

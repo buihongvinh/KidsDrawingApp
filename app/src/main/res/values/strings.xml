@@ -42,4 +42,14 @@
     <string name="tools_list_title">Tool guide</string>
     <string name="tools_list_subtitle">Only the essentials, explained clearly.</string>
     <string name="stop">Stop</string>
+    <string name="overlay_menu">Open drawing tools</string>
+    <string name="overlay_pen">Pen tool</string>
+    <string name="overlay_color">Pick color</string>
+    <string name="overlay_shape">Shape tool</string>
+    <string name="overlay_eraser">Eraser</string>
+    <string name="overlay_undo">Undo</string>
+    <string name="overlay_redo">Redo</string>
+    <string name="overlay_delete">Clear drawing</string>
+    <string name="overlay_hide">Hide or show canvas</string>
+    <string name="overlay_exit">Back to app</string>
 </resources>

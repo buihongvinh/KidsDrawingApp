@@ -147,18 +147,10 @@
         android:background="@drawable/bg_home_ad"
         android:paddingTop="4dp"
         android:paddingBottom="4dp"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/headerLayout">
-
-        <com.google.android.gms.ads.AdView
-            android:id="@+id/adView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            ads:adSize="SMART_BANNER"
-            ads:adUnitId="/21849154601,23155531379/Ad.Plus-APP-Banner" />
-    </FrameLayout>
+        app:layout_constraintTop_toBottomOf="@id/headerLayout" />
 
     <ListView
         android:id="@+id/listView"
