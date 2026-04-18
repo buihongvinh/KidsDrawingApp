@@ -5,11 +5,14 @@ import android.app.Application
 import android.util.Log
 import androidx.preference.PreferenceManager
 import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.OnPaidEventListener
 import com.google.android.gms.ads.admanager.AdManagerAdRequest
 import com.google.android.gms.ads.admanager.AdManagerInterstitialAd
 import com.google.android.gms.ads.admanager.AdManagerInterstitialAdLoadCallback
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import java.util.concurrent.TimeUnit
 
 class InterstitialAdManager(
@@ -17,6 +20,7 @@ class InterstitialAdManager(
 ) {
     private val preferences = PreferenceManager.getDefaultSharedPreferences(application)
     private var interstitialAd: AdManagerInterstitialAd? = null
+    private var testInterstitialAd: InterstitialAd? = null
     private var isLoading = false
     private var isShowing = false
 
@@ -25,35 +29,54 @@ class InterstitialAdManager(
     }
 
     fun preload() {
-        if (isLoading || interstitialAd != null) {
+        if (isLoading || interstitialAd != null || testInterstitialAd != null) {
             return
         }
 
         isLoading = true
-        AdManagerInterstitialAd.load(
-            application,
-            AdIds.INTERSTITIAL,
-            AdManagerAdRequest.Builder().build(),
-            object : AdManagerInterstitialAdLoadCallback() {
-                override fun onAdLoaded(ad: AdManagerInterstitialAd) {
-                    interstitialAd = ad
-                    isLoading = false
-                    ad.setOnPaidEventListener(
-                        OnPaidEventListener { adValue ->
-                            Log.d(
-                                TAG,
-                                "Interstitial paid event valueMicros=${adValue.valueMicros} currency=${adValue.currencyCode}"
-                            )
-                        }
-                    )
-                }
+        if (AdConfig.useTestAds) {
+            InterstitialAd.load(
+                application,
+                AdConfig.interstitialUnitId,
+                AdRequest.Builder().build(),
+                object : InterstitialAdLoadCallback() {
+                    override fun onAdLoaded(ad: InterstitialAd) {
+                        testInterstitialAd = ad
+                        isLoading = false
+                    }
 
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                    isLoading = false
-                    Log.w(TAG, "Interstitial failed to load: ${loadAdError.message}")
+                    override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        isLoading = false
+                        Log.w(TAG, "Interstitial failed to load: ${loadAdError.message}")
+                    }
                 }
-            }
-        )
+            )
+        } else {
+            AdManagerInterstitialAd.load(
+                application,
+                AdConfig.interstitialUnitId,
+                AdManagerAdRequest.Builder().build(),
+                object : AdManagerInterstitialAdLoadCallback() {
+                    override fun onAdLoaded(ad: AdManagerInterstitialAd) {
+                        interstitialAd = ad
+                        isLoading = false
+                        ad.setOnPaidEventListener(
+                            OnPaidEventListener { adValue ->
+                                Log.d(
+                                    TAG,
+                                    "Interstitial paid event valueMicros=${adValue.valueMicros} currency=${adValue.currencyCode}"
+                                )
+                            }
+                        )
+                    }
+
+                    override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        isLoading = false
+                        Log.w(TAG, "Interstitial failed to load: ${loadAdError.message}")
+                    }
+                }
+            )
+        }
     }
 
     fun recordDrawingSessionCompleted() {
@@ -67,19 +90,26 @@ class InterstitialAdManager(
             return
         }
 
-        val ad = interstitialAd
-        if (ad == null || isShowing) {
+        if (isShowing) {
+            preload()
+            return
+        }
+
+        val prodAd = interstitialAd
+        val debugAd = testInterstitialAd
+        if (prodAd == null && debugAd == null) {
             preload()
             return
         }
 
         isShowing = true
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+        val fullScreenCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() {
                 preferences.edit()
                     .putLong(PREF_LAST_INTERSTITIAL_SHOW_AT, System.currentTimeMillis())
                     .apply()
                 interstitialAd = null
+                testInterstitialAd = null
                 isShowing = false
                 preload()
             }
@@ -87,15 +117,23 @@ class InterstitialAdManager(
             override fun onAdFailedToShowFullScreenContent(adError: com.google.android.gms.ads.AdError) {
                 Log.w(TAG, "Interstitial failed to show: ${adError.message}")
                 interstitialAd = null
+                testInterstitialAd = null
                 isShowing = false
                 preload()
             }
 
             override fun onAdShowedFullScreenContent() {
                 interstitialAd = null
+                testInterstitialAd = null
             }
         }
-        ad.show(activity)
+        if (AdConfig.useTestAds) {
+            debugAd?.fullScreenContentCallback = fullScreenCallback
+            debugAd?.show(activity)
+        } else {
+            prodAd?.fullScreenContentCallback = fullScreenCallback
+            prodAd?.show(activity)
+        }
     }
 
     private fun isEligibleToShow(): Boolean {

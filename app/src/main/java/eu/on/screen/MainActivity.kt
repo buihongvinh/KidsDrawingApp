@@ -34,9 +34,17 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.preference.PreferenceManager
 import com.codemybrainsout.ratingdialog.RatingDialog
 import com.google.android.gms.ads.AdListener
+import com.google.android.gms.ads.AdLoader
+import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.admanager.AdManagerAdRequest
 import com.google.android.gms.ads.admanager.AdManagerAdView
+import com.google.android.gms.ads.nativead.MediaView
+import com.google.android.gms.ads.nativead.NativeAd
+import com.google.android.gms.ads.nativead.NativeAdOptions
+import com.google.android.gms.ads.nativead.NativeAdView
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import eu.on.screen.model.ListItemModel
 import eu.on.screen.R
@@ -54,8 +62,12 @@ class MainActivity : AppCompatActivity() {
     private var sharedPreferences: SharedPreferences? = null
     var editor: SharedPreferences.Editor? = null
     private var adView: AdManagerAdView? = null
+    private var testBannerView: AdView? = null
+    private var nativeAd: NativeAd? = null
     private lateinit var appOpenManager: AppOpenManager
     private lateinit var adContainer: FrameLayout
+    private lateinit var nativeAdContainer: FrameLayout
+    private lateinit var toolsSection: LinearLayout
     private lateinit var statusContainer: LinearLayout
     private lateinit var statusTitle: TextView
     private lateinit var statusSubtitle: TextView
@@ -79,14 +91,11 @@ class MainActivity : AppCompatActivity() {
         appOpenManager = (application as KidsDrawingApplication).appOpenManager
         val backgroundScope = CoroutineScope(Dispatchers.IO)
         adContainer = findViewById(R.id.adContainer)
+        nativeAdContainer = findViewById(R.id.nativeAdContainer)
+        toolsSection = findViewById(R.id.toolsSection)
+        loadNativeAd()
         loadBannerAd()
-        //   setSupportActionBar(findViewById(R.id.toolbar))
-        val listView: ListView = findViewById(R.id.listView)
-        
-        // Add header to ListView
-        val headerView = layoutInflater.inflate(R.layout.list_header, null)
-        listView.addHeaderView(headerView, null, false)
-        
+
         val dataList = mutableListOf<ListItemModel>()
 
         // Add Settings item at the top
@@ -172,24 +181,7 @@ class MainActivity : AppCompatActivity() {
             )
         )
 
-        val adapter = SettingsAdapter(this, dataList)
-        listView.adapter = adapter
-        
-        // Add click listener for ListView items
-        listView.onItemClickListener = AdapterView.OnItemClickListener { parent, view, position, id ->
-            // Account for header view (position 0 is header)
-            val itemPosition = position - 1 // Subtract 1 for header
-            
-            if (itemPosition >= 0 && itemPosition < dataList.size) {
-                val item = dataList[itemPosition]
-                
-                // Check if it's the Floating Icon Size setting
-                if (item.title == "Floating Icon Size") {
-                    showFabSizeDialog()
-                }
-                // Other items are just informational, no action needed
-            }
-        }
+        populateToolGuide(dataList)
         
         buttonCLick = findViewById(R.id.btnPlay)
         statusContainer = findViewById(R.id.statusContainer)
@@ -271,6 +263,40 @@ class MainActivity : AppCompatActivity() {
         
         dialog.show()
     }
+
+    private fun populateToolGuide(dataList: List<ListItemModel>) {
+        toolsSection.removeAllViews()
+
+        val headerView = layoutInflater.inflate(R.layout.list_header, toolsSection, false)
+        toolsSection.addView(headerView)
+
+        dataList.forEach { item ->
+            val itemView = layoutInflater.inflate(R.layout.list_item_layout, toolsSection, false)
+            val imageView = itemView.findViewById<ImageView>(R.id.sss)
+            val titleView = itemView.findViewById<TextView>(R.id.minimize)
+            val descriptionView = itemView.findViewById<TextView>(R.id.descript)
+            val switchView = itemView.findViewById<Switch>(R.id.switch1)
+
+            imageView.setImageResource(item.imageResId)
+            titleView.text = item.title
+            descriptionView.text = item.description
+            switchView.visibility = View.GONE
+
+            itemView.setOnClickListener {
+                if (item.title == "Floating Icon Size") {
+                    showFabSizeDialog()
+                }
+            }
+
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            params.bottomMargin = (10 * resources.displayMetrics.density).toInt()
+            itemView.layoutParams = params
+            toolsSection.addView(itemView)
+        }
+    }
     
     private fun updateFabSizeText(textView: TextView?, size: Int) {
         val sizeText = when (size) {
@@ -314,6 +340,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        adView?.resume()
+        if (adView == null) {
+            loadBannerAd()
+        }
         isServiceRunning = isServiceRunning(this, DrawService::class.java)
         if (isServiceRunning) {
             Log.e("231", "service is running")
@@ -328,13 +358,90 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         adView?.pause()
+        testBannerView?.pause()
         super.onPause()
     }
 
     override fun onDestroy() {
         adView?.destroy()
         adView = null
+        testBannerView?.destroy()
+        testBannerView = null
+        nativeAd?.destroy()
+        nativeAd = null
         super.onDestroy()
+    }
+
+    private fun loadNativeAd() {
+        val adLoader = AdLoader.Builder(this, AdConfig.nativeUnitId)
+            .forNativeAd { loadedNativeAd ->
+                nativeAd?.destroy()
+                nativeAd = loadedNativeAd
+
+                val adView = layoutInflater.inflate(
+                    R.layout.view_native_ad,
+                    nativeAdContainer,
+                    false
+                ) as NativeAdView
+                bindNativeAd(loadedNativeAd, adView)
+                nativeAdContainer.removeAllViews()
+                nativeAdContainer.addView(adView)
+                nativeAdContainer.visibility = View.VISIBLE
+                Log.d("MainActivity", "Native ad loaded. useTestAds=${AdConfig.useTestAds}")
+            }
+            .withNativeAdOptions(
+                NativeAdOptions.Builder().build()
+            )
+            .withAdListener(object : AdListener() {
+                override fun onAdFailedToLoad(error: LoadAdError) {
+                    Log.w("MainActivity", "Native ad failed to load: ${error.message}")
+                    nativeAdContainer.removeAllViews()
+                    nativeAdContainer.visibility = View.GONE
+                }
+            })
+            .build()
+
+        adLoader.loadAd(AdRequest.Builder().build())
+    }
+
+    private fun bindNativeAd(ad: NativeAd, adView: NativeAdView) {
+        val headlineView = adView.findViewById<TextView>(R.id.ad_headline)
+        val bodyView = adView.findViewById<TextView>(R.id.ad_body)
+        val ctaView = adView.findViewById<Button>(R.id.ad_call_to_action)
+        val iconView = adView.findViewById<ImageView>(R.id.ad_app_icon)
+        val advertiserView = adView.findViewById<TextView>(R.id.ad_advertiser)
+        val mediaView = adView.findViewById<MediaView>(R.id.ad_media)
+
+        adView.headlineView = headlineView
+        adView.bodyView = bodyView
+        adView.callToActionView = ctaView
+        adView.iconView = iconView
+        adView.advertiserView = advertiserView
+        adView.mediaView = mediaView
+
+        headlineView.text = ad.headline
+
+        bodyView.text = ad.body
+        bodyView.visibility = if (ad.body.isNullOrBlank()) View.GONE else View.VISIBLE
+
+        ctaView.text = ad.callToAction
+        ctaView.visibility = if (ad.callToAction.isNullOrBlank()) View.GONE else View.VISIBLE
+
+        advertiserView.text = ad.advertiser
+        advertiserView.visibility = if (ad.advertiser.isNullOrBlank()) View.GONE else View.VISIBLE
+
+        val icon = ad.icon
+        if (icon != null) {
+            iconView.setImageDrawable(icon.drawable)
+            iconView.visibility = View.VISIBLE
+        } else {
+            iconView.visibility = View.GONE
+        }
+
+        mediaView.mediaContent = ad.mediaContent
+        mediaView.visibility = if (ad.mediaContent == null) View.GONE else View.VISIBLE
+
+        adView.setNativeAd(ad)
     }
 
     private fun loadBannerAd() {
@@ -347,25 +454,44 @@ class MainActivity : AppCompatActivity() {
             }
 
             adView?.destroy()
-            val bannerView = AdManagerAdView(this).apply {
-                adUnitId = AdIds.BANNER
-                setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this@MainActivity, adWidth))
-                adListener = object : AdListener() {
-                    override fun onAdLoaded() {
-                        adContainer.visibility = View.VISIBLE
-                    }
+            testBannerView?.destroy()
+            adView = null
+            testBannerView = null
 
-                    override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
-                        Log.w("MainActivity", "Banner failed to load: ${error.message}")
-                        adContainer.visibility = View.GONE
-                    }
+            val adListener = object : AdListener() {
+                override fun onAdLoaded() {
+                    adContainer.visibility = View.VISIBLE
+                    Log.d("MainActivity", "Banner loaded. useTestAds=${AdConfig.useTestAds}")
+                }
+
+                override fun onAdFailedToLoad(error: com.google.android.gms.ads.LoadAdError) {
+                    Log.w("MainActivity", "Banner failed to load: ${error.message}")
+                    adContainer.visibility = View.GONE
+                    adView = null
+                    testBannerView = null
                 }
             }
 
             adContainer.removeAllViews()
-            adContainer.addView(bannerView)
-            adView = bannerView
-            bannerView.loadAd(AdManagerAdRequest.Builder().build())
+            if (AdConfig.useTestAds) {
+                val bannerView = AdView(this).apply {
+                    adUnitId = AdConfig.bannerUnitId
+                    setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this@MainActivity, adWidth))
+                    this.adListener = adListener
+                }
+                adContainer.addView(bannerView)
+                testBannerView = bannerView
+                bannerView.loadAd(AdRequest.Builder().build())
+            } else {
+                val bannerView = AdManagerAdView(this).apply {
+                    adUnitId = AdConfig.bannerUnitId
+                    setAdSize(AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this@MainActivity, adWidth))
+                    this.adListener = adListener
+                }
+                adContainer.addView(bannerView)
+                adView = bannerView
+                bannerView.loadAd(AdManagerAdRequest.Builder().build())
+            }
         }
     }
 
