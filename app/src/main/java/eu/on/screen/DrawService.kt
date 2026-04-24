@@ -46,6 +46,18 @@ class DrawService : Service() {
     private var mImageButtonCurrentPaint: ImageButton? =
         null // A variable for current color is picked from color pallet.
 
+    private fun updateTouchThroughState(enabled: Boolean) {
+        sharedPreferences?.edit()?.putBoolean("touchThroughEnabled", enabled)?.commit()
+        params.flags = if (enabled) {
+            params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        } else {
+            params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        }
+        if (mFloatingView?.isAttachedToWindow == true) {
+            mWindowManager?.updateViewLayout(mFloatingView, params)
+        }
+    }
+
     override fun onBind(intent: Intent): IBinder? {
         return null
     }
@@ -166,6 +178,10 @@ class DrawService : Service() {
                 else if (intent?.action.equals("action.delete")){
                     drawingView?.clearAllDrawings()
                 }
+                else if (intent?.action.equals("action.touchThrough")){
+                    val enabled = intent?.getBooleanExtra("touchThrough", false) ?: false
+                    updateTouchThroughState(enabled)
+                }
             }
         }
         val intentFilter = IntentFilter()
@@ -179,6 +195,7 @@ class DrawService : Service() {
         intentFilter.addAction("action.undo") // Action2 to filter
         intentFilter.addAction("action.redo") // Action2 to filter
         intentFilter.addAction("action.delete") // Action2 to filter
+        intentFilter.addAction("action.touchThrough") // Action2 to filter
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, intentFilter, Context.RECEIVER_EXPORTED)
         } else {
@@ -186,6 +203,7 @@ class DrawService : Service() {
         }
 
         mWindowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        updateTouchThroughState(sharedPreferences?.getBoolean("touchThroughEnabled", false) == true)
         mWindowManager!!.addView(mFloatingView, params)
 
 

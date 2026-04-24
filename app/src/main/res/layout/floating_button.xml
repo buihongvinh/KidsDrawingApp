@@ -143,6 +143,19 @@
             app:tint="@color/home_primary" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/btn_touch_through"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:contentDescription="@string/overlay_touch_through"
+            app:backgroundTint="@color/home_panel_background"
+            app:fabCustomSize="46dp"
+            app:maxImageSize="20dp"
+            app:rippleColor="@color/home_icon_background"
+            app:srcCompat="@drawable/install_desktop"
+            app:tint="@color/home_primary" />
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/btn_left"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

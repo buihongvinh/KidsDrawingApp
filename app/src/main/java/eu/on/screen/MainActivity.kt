@@ -174,6 +174,14 @@ class MainActivity : AppCompatActivity() {
         )
         dataList.add(
             ListItemModel(
+                R.drawable.install_desktop,
+                "Touch-through Mode",
+                "Tap this new button when you want to keep all current drawings visible on the screen but still touch, scroll, and use the app underneath. Choose Pen, Shape, or Eraser again when you want to continue drawing.",
+                false
+            )
+        )
+        dataList.add(
+            ListItemModel(
                 R.drawable.logout,
                 "Exit Button",
                 "Tap to exit the drawing overlay and return to the main screen. Your drawings will be cleared when you exit.",

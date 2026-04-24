@@ -60,11 +60,13 @@ class DrawTestService : Service() {
     var mRedoFab: FloatingActionButton? = null
     var mDelete: FloatingActionButton? = null
     var mHide: FloatingActionButton? = null
+    var mTouchThroughFab: FloatingActionButton? = null
     var mExits: FloatingActionButton? = null
     var isMoving = false
     var isChooseShape = false
     var isChooseErase = false
     var isPen = false
+    var isTouchThroughEnabled = false
     var mAddFab: FloatingActionButton? = null
     private var fab_open: Animation? = null
     private var fab_close: Animation? = null
@@ -76,7 +78,7 @@ class DrawTestService : Service() {
     private var initialTouchY: Float = 0.0f
     private var mImageButtonCurrentPaint: ImageButton? =
         null // A variable for current color is picked from color pallet.
-    private var sharedPreferences: SharedPreferences? = null
+    var sharedPreferences: SharedPreferences? = null
     private val intent = Intent("action.PickShape")
 
     var editor: SharedPreferences.Editor? = null
@@ -146,7 +148,10 @@ class DrawTestService : Service() {
         mRedoFab = mFloatingView!!.findViewById(R.id.btn_redo)
         mDelete = mFloatingView!!.findViewById(R.id.btn_delete)
         mHide = mFloatingView!!.findViewById(R.id.btn_hide)
+        mTouchThroughFab = mFloatingView!!.findViewById(R.id.btn_touch_through)
         mExits = mFloatingView!!.findViewById(R.id.btn_left)
+        isTouchThroughEnabled = sharedPreferences!!.getBoolean("touchThroughEnabled", false)
+        updateTouchThroughFabState()
 
         // Apply FAB size from preferences
         val fabSize = sharedPreferences!!.getInt("fabSize", 1) // Default: normal
@@ -160,6 +165,7 @@ class DrawTestService : Service() {
         mRedoFab?.visibility = View.GONE
         mDelete?.visibility = View.GONE
         mHide?.visibility = View.GONE
+        mTouchThroughFab?.visibility = View.GONE
         mExits?.visibility = View.GONE
         isAllFabsVisible = false
 
@@ -202,6 +208,7 @@ class DrawTestService : Service() {
                 mRedoFab!!.show()
                 mDelete!!.show()
                 mHide!!.show()
+                mTouchThroughFab!!.show()
                 mExits!!.show()
                 mPickColorFab?.startAnimation(fab_open);
                 mPenFab?.startAnimation(fab_open);
@@ -212,6 +219,7 @@ class DrawTestService : Service() {
                 mRedoFab?.startAnimation(fab_open);
                 mDelete?.startAnimation(fab_open);
                 mHide?.startAnimation(fab_open);
+                mTouchThroughFab?.startAnimation(fab_open);
                 mExits?.startAnimation(fab_open);
                 // Now extend the parent FAB, as
                 // user clicks on the shrinked
@@ -232,6 +240,7 @@ class DrawTestService : Service() {
                 mRedoFab!!.hide()
                 mDelete!!.hide()
                 mHide!!.hide()
+                mTouchThroughFab!!.hide()
                 mExits!!.hide()
                 mPenFab?.startAnimation(fab_close)
                 mPickColorFab?.startAnimation(fab_close)
@@ -242,6 +251,7 @@ class DrawTestService : Service() {
                 mRedoFab?.startAnimation(fab_close)
                 mDelete?.startAnimation(fab_close)
                 mHide?.startAnimation(fab_close)
+                mTouchThroughFab?.startAnimation(fab_close)
                 mExits?.startAnimation(fab_close)
 
                 false
@@ -325,6 +335,7 @@ class DrawTestService : Service() {
 //        }
         mEarseFab!!.setOnClickListener {
             showToast(this, "Eraser Clicked")
+            disableTouchThroughIfNeeded()
             intent.putExtra("pickShape", 5)
             sendBroadcast(intent)
             if (isChooseErase) {
@@ -355,6 +366,7 @@ class DrawTestService : Service() {
 
         mPenFab!!.setOnClickListener {
             showToast(this, "Draw Pen Clicked")
+            disableTouchThroughIfNeeded()
 
                 val intentHide = Intent("action.hideDraw")
             //    hideDraw = false
@@ -382,6 +394,7 @@ class DrawTestService : Service() {
         }
         mPickSharpFab!!.setOnClickListener {
             showToast(this, "Pick Share Clicked")
+            disableTouchThroughIfNeeded()
 
             var savedSeekBarValue: Int = sharedPreferences!!.getInt("seekBarValueShape", 10)
             val intentSizeShape = Intent("action.setSizeShape")
@@ -419,6 +432,23 @@ class DrawTestService : Service() {
             sendBroadcast(intent)
             // mFloatingView?.visibility = View.INVISIBLE
             //    drawingView?.onClickUndo()
+        }
+
+        mTouchThroughFab!!.setOnClickListener {
+            isTouchThroughEnabled = !isTouchThroughEnabled
+            sharedPreferences?.edit()?.putBoolean("touchThroughEnabled", isTouchThroughEnabled)?.commit()
+            updateTouchThroughFabState()
+
+            val intentTouchThrough = Intent("action.touchThrough")
+            intentTouchThrough.putExtra("touchThrough", isTouchThroughEnabled)
+            sendBroadcast(intentTouchThrough)
+
+            val message = if (isTouchThroughEnabled) {
+                "Touch-through enabled"
+            } else {
+                "Touch-through disabled"
+            }
+            showToast(this, message)
         }
 
 
@@ -785,7 +815,7 @@ fun DrawTestService.applyFabSize(size: Int) {
     
     // Set size programmatically for all FABs
     val fabList = listOf(mAddFab, mPenFab, mPickColorFab, mPickSharpFab, mEarseFab, 
-        mUndoFab, mRedoFab, mDelete, mHide, mExits)
+        mUndoFab, mRedoFab, mDelete, mHide, mTouchThroughFab, mExits)
     
     fabList.forEach { fab ->
         fab?.size = fabSizeValue
@@ -801,4 +831,36 @@ fun DrawTestService.applyFabSize(size: Int) {
             fab?.requestLayout()
         }
     }
+}
+
+private fun DrawTestService.disableTouchThroughIfNeeded() {
+    if (!isTouchThroughEnabled) {
+        return
+    }
+
+    isTouchThroughEnabled = false
+    sharedPreferences?.edit()?.putBoolean("touchThroughEnabled", false)?.commit()
+    updateTouchThroughFabState()
+
+    val intentTouchThrough = Intent("action.touchThrough")
+    intentTouchThrough.putExtra("touchThrough", false)
+    sendBroadcast(intentTouchThrough)
+}
+
+private fun DrawTestService.updateTouchThroughFabState() {
+    val backgroundColor = if (isTouchThroughEnabled) {
+        R.color.home_primary
+    } else {
+        R.color.home_panel_background
+    }
+    val iconColor = if (isTouchThroughEnabled) {
+        R.color.white
+    } else {
+        R.color.home_primary
+    }
+
+    mTouchThroughFab?.backgroundTintList =
+        ContextCompat.getColorStateList(this, backgroundColor)
+    mTouchThroughFab?.imageTintList =
+        ContextCompat.getColorStateList(this, iconColor)
 }

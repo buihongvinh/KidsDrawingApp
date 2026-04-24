@@ -31,6 +31,7 @@
     <string name="home_badge">DRAW ON SCREEN</string>
     <string name="home_title">Draw anywhere, without clutter</string>
     <string name="home_subtitle">Start the floating canvas in one tap, then keep the rest of the screen calm and easy to understand.</string>
+    <string name="home_touch_through_hint">New: Turn on Touch-through from the floating menu when you want to keep your drawing visible but still tap, scroll, or use the app underneath.</string>
     <string name="home_chip_overlay">Works above other apps</string>
     <string name="home_chip_tools">Brush, color, erase, undo</string>
     <string name="home_status_idle_title">Overlay is off</string>
@@ -51,6 +52,7 @@
     <string name="overlay_redo">Redo</string>
     <string name="overlay_delete">Clear drawing</string>
     <string name="overlay_hide">Hide or show canvas</string>
+    <string name="overlay_touch_through">Allow touch through canvas</string>
     <string name="overlay_exit">Back to app</string>
     <string name="ad_label">Ad</string>
 </resources>
