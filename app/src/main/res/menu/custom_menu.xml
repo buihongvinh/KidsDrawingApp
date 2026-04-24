@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/nav_vip"
+        android:title="@string/vip_menu_title"
+        android:icon="@drawable/ic_reward"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/nav_settings"
         android:title="@string/settings"
         app:showAsAction="ifRoom"

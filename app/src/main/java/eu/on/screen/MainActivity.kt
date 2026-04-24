@@ -20,8 +20,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
@@ -45,6 +43,7 @@ import com.google.android.gms.ads.nativead.MediaView
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdOptions
 import com.google.android.gms.ads.nativead.NativeAdView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
 import eu.on.screen.model.ListItemModel
 import eu.on.screen.R
@@ -71,6 +70,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusContainer: LinearLayout
     private lateinit var statusTitle: TextView
     private lateinit var statusSubtitle: TextView
+    private lateinit var topAppBar: LinearLayout
+    private lateinit var vipTopBarButton: ImageButton
+    private lateinit var settingsTopBarButton: ImageButton
+    private var billingManager: BillingManager? = null
+    private var vipProductDetails: com.android.billingclient.api.ProductDetails? = null
 
     @SuppressLint("MissingInflatedId")
     @RequiresApi(Build.VERSION_CODES.O)
@@ -85,16 +89,25 @@ class MainActivity : AppCompatActivity() {
             .session(1)
             .onRatingBarFormSubmit { feedback -> Log.i(TAG, "onRatingBarFormSubmit: $feedback") }
             .build()
-        actionBar?.show()
         setContentView(R.layout.activity_main)
 
         appOpenManager = (application as KidsDrawingApplication).appOpenManager
         val backgroundScope = CoroutineScope(Dispatchers.IO)
+        topAppBar = findViewById(R.id.topAppBar)
+        vipTopBarButton = findViewById(R.id.btnVipTopBar)
+        settingsTopBarButton = findViewById(R.id.btnSettingsTopBar)
         adContainer = findViewById(R.id.adContainer)
         nativeAdContainer = findViewById(R.id.nativeAdContainer)
         toolsSection = findViewById(R.id.toolsSection)
-        loadNativeAd()
-        loadBannerAd()
+        vipTopBarButton.setOnClickListener { showVipDialog() }
+        settingsTopBarButton.setOnClickListener { showFabSizeDialogSafely() }
+
+        if (!VipManager.isVip(this)) {
+            loadNativeAd()
+            loadBannerAd()
+        } else {
+            clearAdViews()
+        }
 
         val dataList = mutableListOf<ListItemModel>()
 
@@ -195,6 +208,25 @@ class MainActivity : AppCompatActivity() {
         statusContainer = findViewById(R.id.statusContainer)
         statusTitle = findViewById(R.id.textStatusTitle)
         statusSubtitle = findViewById(R.id.textStatusSubtitle)
+        billingManager = BillingManager(
+            activity = this,
+            onProductDetailsChanged = { productDetails ->
+                runOnUiThread {
+                    vipProductDetails = productDetails
+                }
+            },
+            onVipStateChanged = { isVip ->
+                runOnUiThread {
+                    refreshAdVisibility()
+                }
+            },
+            onMessage = { message ->
+                runOnUiThread {
+                    Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+        billingManager?.start()
         renderServiceState()
         buttonCLick.setOnClickListener {
 
@@ -220,21 +252,13 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(baseContext, "Portrait Mode", Toast.LENGTH_SHORT).show()
         }
     }
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.custom_menu, menu)
-        return super.onCreateOptionsMenu(menu)
-    }
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.nav_settings) {
-            try {
-                showFabSizeDialog()
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error showing FAB size dialog: ${e.message}", e)
-                Toast.makeText(this, "Error opening settings: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-            return true
+    private fun showFabSizeDialogSafely() {
+        try {
+            showFabSizeDialog()
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error showing FAB size dialog: ${e.message}", e)
+            Toast.makeText(this, "Error opening settings: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-        return super.onOptionsItemSelected(item)
     }
     
     private fun showFabSizeDialog() {
@@ -292,7 +316,7 @@ class MainActivity : AppCompatActivity() {
 
             itemView.setOnClickListener {
                 if (item.title == "Floating Icon Size") {
-                    showFabSizeDialog()
+                    showFabSizeDialogSafely()
                 }
             }
 
@@ -349,7 +373,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         adView?.resume()
-        if (adView == null) {
+        billingManager?.start()
+        if (adView == null && !VipManager.isVip(this)) {
             loadBannerAd()
         }
         isServiceRunning = isServiceRunning(this, DrawService::class.java)
@@ -371,6 +396,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        billingManager?.destroy()
         adView?.destroy()
         adView = null
         testBannerView?.destroy()
@@ -381,6 +407,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadNativeAd() {
+        if (VipManager.isVip(this)) {
+            nativeAd?.destroy()
+            nativeAd = null
+            nativeAdContainer.removeAllViews()
+            nativeAdContainer.visibility = View.GONE
+            return
+        }
+
         val adLoader = AdLoader.Builder(this, AdConfig.nativeUnitId)
             .forNativeAd { loadedNativeAd ->
                 nativeAd?.destroy()
@@ -453,6 +487,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadBannerAd() {
+        if (VipManager.isVip(this)) {
+            clearBannerViews()
+            return
+        }
+
         adContainer.post {
             val adWidthPixels = adContainer.width.takeIf { it > 0 }
                 ?: resources.displayMetrics.widthPixels - (40 * resources.displayMetrics.density).toInt()
@@ -526,6 +565,101 @@ class MainActivity : AppCompatActivity() {
         statusSubtitle.setText(subtitleRes)
         statusContainer.background =
             ResourcesCompat.getDrawable(resources, statusBackgroundRes, theme)
+    }
+
+    private fun formatVipPrice(productDetails: com.android.billingclient.api.ProductDetails): String {
+        val offer = productDetails.subscriptionOfferDetails
+            ?.firstOrNull { it.offerId == null }
+            ?: productDetails.subscriptionOfferDetails?.firstOrNull()
+        val pricingPhase = offer?.pricingPhases?.pricingPhaseList?.lastOrNull()
+            ?: offer?.pricingPhases?.pricingPhaseList?.firstOrNull()
+
+        return pricingPhase?.formattedPrice ?: productDetails.title
+    }
+
+    private fun showVipDialog() {
+        val isVip = VipManager.isVip(this)
+        val isConfigured = VipManager.isVipProductConfigured(this)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_vip_purchase, null)
+        val subtitleView = dialogView.findViewById<TextView>(R.id.textVipDialogSubtitle)
+        val statusChipView = dialogView.findViewById<TextView>(R.id.textVipStatusChip)
+        val priceView = dialogView.findViewById<TextView>(R.id.textVipPrice)
+        val statusView = dialogView.findViewById<TextView>(R.id.textVipStatus)
+
+        val headline = when {
+            isVip -> getString(R.string.vip_status_active)
+            !isConfigured -> getString(R.string.vip_status_missing_config)
+            vipProductDetails != null -> getString(R.string.vip_status_ready)
+            else -> getString(R.string.vip_status_loading)
+        }
+        subtitleView.text = headline
+        statusChipView.text = headline
+        statusView.text = when {
+            isVip -> getString(R.string.vip_tool_description)
+            !isConfigured -> getString(R.string.vip_dialog_config_hint)
+            vipProductDetails != null -> getString(R.string.vip_tool_description)
+            else -> getString(R.string.vip_status_loading)
+        }
+        priceView.text = when {
+            isVip -> getString(R.string.vip_price_active)
+            !isConfigured -> getString(R.string.vip_price_missing_config)
+            vipProductDetails != null -> formatVipPrice(vipProductDetails!!)
+            else -> getString(R.string.vip_price_loading)
+        }
+
+        val builder = MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .setNegativeButton(R.string.vip_dialog_close, null)
+
+        when {
+            isVip -> builder.setPositiveButton(R.string.vip_dialog_manage) { _, _ ->
+                openVipSubscriptionManagement()
+            }
+            isConfigured && vipProductDetails != null -> builder.setPositiveButton(R.string.vip_button_buy) { _, _ ->
+                billingManager?.launchVipPurchase()
+            }
+        }
+
+        builder.show()
+    }
+
+    private fun openVipSubscriptionManagement() {
+        val productId = VipManager.getVipProductId(this)
+        val uri = Uri.parse(
+            "https://play.google.com/store/account/subscriptions?sku=$productId&package=$packageName"
+        )
+        startActivity(Intent(Intent.ACTION_VIEW, uri))
+    }
+
+    private fun refreshAdVisibility() {
+        if (VipManager.isVip(this)) {
+            clearAdViews()
+            return
+        }
+
+        if (nativeAd == null) {
+            loadNativeAd()
+        }
+        if (adView == null && testBannerView == null) {
+            loadBannerAd()
+        }
+    }
+
+    private fun clearBannerViews() {
+        adView?.destroy()
+        adView = null
+        testBannerView?.destroy()
+        testBannerView = null
+        adContainer.removeAllViews()
+        adContainer.visibility = View.GONE
+    }
+
+    private fun clearAdViews() {
+        clearBannerViews()
+        nativeAd?.destroy()
+        nativeAd = null
+        nativeAdContainer.removeAllViews()
+        nativeAdContainer.visibility = View.GONE
     }
 
     private fun isServiceRunning(context: Context, serviceClass: Class<*>): Boolean {

@@ -36,6 +36,12 @@ class AppOpenManager(
     }
 
     override fun onStart(owner: LifecycleOwner) {
+        if (VipManager.isVip(application)) {
+            pendingShowRequest = false
+            appOpenAd = null
+            return
+        }
+
         val launchCount = preferences.getInt(PREF_APP_OPEN_LAUNCH_COUNT, 0) + 1
         preferences.edit().putInt(PREF_APP_OPEN_LAUNCH_COUNT, launchCount).apply()
 
@@ -55,6 +61,13 @@ class AppOpenManager(
     }
 
     fun fetchAd() {
+        if (VipManager.isVip(application)) {
+            appOpenAd = null
+            pendingShowRequest = false
+            isLoadingAd = false
+            return
+        }
+
         if (isLoadingAd || isAdAvailable()) {
             Log.d(TAG, "Skip fetch: isLoading=$isLoadingAd isAdAvailable=${isAdAvailable()}")
             return
@@ -125,6 +138,12 @@ class AppOpenManager(
     }
 
     private fun showAdIfAvailable(activity: Activity) {
+        if (VipManager.isVip(application)) {
+            appOpenAd = null
+            pendingShowRequest = false
+            return
+        }
+
         if (isShowingAd) {
             Log.d(TAG, "Skip show: already showing")
             return

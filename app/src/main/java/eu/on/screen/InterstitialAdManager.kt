@@ -29,6 +29,13 @@ class InterstitialAdManager(
     }
 
     fun preload() {
+        if (VipManager.isVip(application)) {
+            interstitialAd = null
+            testInterstitialAd = null
+            isLoading = false
+            return
+        }
+
         if (isLoading || interstitialAd != null || testInterstitialAd != null) {
             return
         }
@@ -85,6 +92,12 @@ class InterstitialAdManager(
     }
 
     fun maybeShowAfterDrawingSession(activity: Activity) {
+        if (VipManager.isVip(application)) {
+            interstitialAd = null
+            testInterstitialAd = null
+            return
+        }
+
         if (!isEligibleToShow()) {
             preload()
             return
