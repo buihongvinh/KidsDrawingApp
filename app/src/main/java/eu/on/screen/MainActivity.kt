@@ -89,11 +89,30 @@ class MainActivity : AppCompatActivity() {
             .session(1)
             .onRatingBarFormSubmit { feedback -> Log.i(TAG, "onRatingBarFormSubmit: $feedback") }
             .build()
+        supportActionBar?.hide()
         setContentView(R.layout.activity_main)
+
+        // Make the app edge-to-edge
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            var flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                flags = flags or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            }
+            window.decorView.systemUiVisibility = flags
+            window.statusBarColor = Color.TRANSPARENT
+        }
 
         appOpenManager = (application as KidsDrawingApplication).appOpenManager
         val backgroundScope = CoroutineScope(Dispatchers.IO)
         topAppBar = findViewById(R.id.topAppBar)
+        
+        // Adjust topAppBar padding to account for the status bar
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(topAppBar) { v, insets ->
+            val systemBars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            v.setPadding(v.paddingLeft, systemBars.top, v.paddingRight, v.paddingBottom)
+            insets
+        }
+
         vipTopBarButton = findViewById(R.id.btnVipTopBar)
         settingsTopBarButton = findViewById(R.id.btnSettingsTopBar)
         adContainer = findViewById(R.id.adContainer)
