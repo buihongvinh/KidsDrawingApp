@@ -1,183 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/layout"
+    android:id="@+id/overlay_toolbar_container"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
+    android:background="@drawable/bg_overlay_controls"
+    android:elevation="8dp"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="8dp"
     android:theme="@style/customTheme">
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/overlay_scroll"
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/add_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/overlay_menu"
+        android:layout_marginBottom="8dp"
+        app:backgroundTint="@color/home_primary"
+        app:fabCustomSize="52dp"
+        app:maxImageSize="24dp"
+        app:rippleColor="@color/home_icon_background"
+        app:srcCompat="@drawable/plus"
+        app:tint="@color/white" />
+
+    <View
+        android:id="@+id/toolbar_divider"
+        android:layout_width="28dp"
+        android:layout_height="1dp"
+        android:layout_marginBottom="8dp"
+        android:background="@color/home_card_stroke"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_fabs"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:clipToPadding="false"
-        android:fillViewport="false"
+        android:nestedScrollingEnabled="false"
         android:overScrollMode="ifContentScrolls"
-        android:scrollbars="none">
+        android:padding="0dp"
+        android:scrollbars="none"
+        android:visibility="gone" />
 
-        <LinearLayout
-            android:id="@+id/ll_action_buttons"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_overlay_controls"
-            android:elevation="8dp"
-            android:gravity="center_horizontal"
-            android:orientation="vertical"
-            android:paddingStart="8dp"
-            android:paddingTop="8dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="8dp">
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/add_fab"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:contentDescription="@string/overlay_menu"
-            android:layout_marginBottom="8dp"
-            app:backgroundTint="@color/home_primary"
-            app:fabCustomSize="52dp"
-            app:maxImageSize="24dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/plus"
-            app:tint="@color/white" />
-
-        <View
-            android:layout_width="28dp"
-            android:layout_height="1dp"
-            android:layout_marginBottom="8dp"
-            android:background="@color/home_card_stroke" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/add_alarm_fab"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_pen"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/ic_brush"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/add_person_fab"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_color"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/color_palette"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_pick_sharp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_shape"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/interests"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_erase"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_eraser"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/eraser"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_undo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_undo"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/undo"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_redo"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_redo"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/redo"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_delete"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_delete"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/bin"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_hide"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_hide"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/view"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_touch_through"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="6dp"
-            android:contentDescription="@string/overlay_touch_through"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/install_desktop"
-            app:tint="@color/home_primary" />
-
-        <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/btn_left"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:contentDescription="@string/overlay_exit"
-            app:backgroundTint="@color/home_panel_background"
-            app:fabCustomSize="46dp"
-            app:maxImageSize="20dp"
-            app:rippleColor="@color/home_icon_background"
-            app:srcCompat="@drawable/logout"
-            app:tint="@color/home_primary" />
-
-        </LinearLayout>
-
-    </androidx.core.widget.NestedScrollView>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

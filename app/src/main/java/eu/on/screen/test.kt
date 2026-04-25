@@ -11,6 +11,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Handler
@@ -28,20 +29,33 @@ import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
-import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import eu.on.screen.ViewModel.HideDrawViewModel
 import yuku.ambilwarna.AmbilWarnaDialog
 import yuku.ambilwarna.AmbilWarnaDialog.OnAmbilWarnaListener
 
+private const val FAB_ID_PEN = "pen"
+private const val FAB_ID_COLOR = "color"
+private const val FAB_ID_SHAPE = "shape"
+private const val FAB_ID_ERASE = "erase"
+private const val FAB_ID_UNDO = "undo"
+private const val FAB_ID_REDO = "redo"
+private const val FAB_ID_DELETE = "delete"
+private const val FAB_ID_HIDE = "hide"
+private const val FAB_ID_TOUCH = "touch"
+private const val FAB_ID_EXIT = "exit"
 
 class DrawTestService : Service() {
     private val handler: Handler = Handler()
@@ -50,35 +64,33 @@ class DrawTestService : Service() {
     private var drawingView: DrawingView? = null
     private var mWindowManager: WindowManager? = null
     private var mFloatingView: View? = null
+    private var toolbarContainer: LinearLayout? = null
+    private var toolbarDivider: View? = null
+    private var fabRecyclerView: RecyclerView? = null
+    private var fabAdapter: FabAdapter? = null
+    private var fabTouchCallback: FabItemTouchCallback? = null
+    private var itemTouchHelper: ItemTouchHelper? = null
+    private val fabItems: MutableList<FabItem> = mutableListOf()
     var height: Int? = null
    // var hideDraw: Boolean = false
     var isAllFabsVisible: Boolean? = null
-    var mPenFab: FloatingActionButton? = null
-    var mPickColorFab: FloatingActionButton? = null
-    var mPickSharpFab: FloatingActionButton? = null
-    var mEarseFab: FloatingActionButton? = null
-    var mUndoFab: FloatingActionButton? = null
-    var mRedoFab: FloatingActionButton? = null
-    var mDelete: FloatingActionButton? = null
-    var mHide: FloatingActionButton? = null
-    var mTouchThroughFab: FloatingActionButton? = null
-    var mExits: FloatingActionButton? = null
-    private var overlayScrollView: NestedScrollView? = null
     var isMoving = false
     var isChooseShape = false
     var isChooseErase = false
     var isPen = false
     var isTouchThroughEnabled = false
     var mAddFab: FloatingActionButton? = null
+    private var initialOverlayX: Int = 0
+    private var initialOverlayY: Int = 0
+    private var initialTouchX: Float = 0f
+    private var initialTouchY: Float = 0f
+    private var lastDownTouchX: Float = 0f
+    private var lastDownTouchY: Float = 0f
+    private var isDraggingOverlay = false
     private var fab_open: Animation? = null
     private var fab_close: Animation? = null
     private var fab_clock: Animation? = null
     private var fab_anticlock: Animation? = null
-    private var initialX: Float = 0.0f
-    private var initialY: Float = 0.0f
-    private var initialTouchX: Float = 0.0f
-    private var initialTouchY: Float = 0.0f
-    private var isDragMode = false
     private var mImageButtonCurrentPaint: ImageButton? =
         null // A variable for current color is picked from color pallet.
     var sharedPreferences: SharedPreferences? = null
@@ -138,39 +150,20 @@ class DrawTestService : Service() {
         editor = sharedPreferences?.edit()
         
         mFloatingView = LayoutInflater.from(this).inflate(R.layout.floating_button, null)
-        drawingView = mFloatingView!!.findViewById(R.id.drawing_view)
-        overlayScrollView = mFloatingView!!.findViewById(R.id.overlay_scroll)
+        toolbarContainer = mFloatingView!!.findViewById(R.id.overlay_toolbar_container)
+        toolbarDivider = mFloatingView!!.findViewById(R.id.toolbar_divider)
+        fabRecyclerView = mFloatingView!!.findViewById(R.id.rv_fabs)
         mAddFab = mFloatingView!!.findViewById(R.id.add_fab)
-
-
-        // FAB button
-        mPenFab = mFloatingView!!.findViewById(R.id.add_alarm_fab)
-        mPickColorFab = mFloatingView!!.findViewById(R.id.add_person_fab)
-        mPickSharpFab = mFloatingView!!.findViewById(R.id.btn_pick_sharp)
-        mEarseFab = mFloatingView!!.findViewById(R.id.btn_erase)
-        mUndoFab = mFloatingView!!.findViewById(R.id.btn_undo)
-        mRedoFab = mFloatingView!!.findViewById(R.id.btn_redo)
-        mDelete = mFloatingView!!.findViewById(R.id.btn_delete)
-        mHide = mFloatingView!!.findViewById(R.id.btn_hide)
-        mTouchThroughFab = mFloatingView!!.findViewById(R.id.btn_touch_through)
-        mExits = mFloatingView!!.findViewById(R.id.btn_left)
         isTouchThroughEnabled = sharedPreferences!!.getBoolean("touchThroughEnabled", false)
-        updateTouchThroughFabState()
 
         // Apply FAB size from preferences
         val fabSize = sharedPreferences!!.getInt("fabSize", 1) // Default: normal
         applyFabSize(fabSize)
-        
-        mPenFab?.visibility = View.GONE
-        mPickColorFab?.visibility = View.GONE
-        mPickSharpFab?.visibility = View.GONE
-        mEarseFab?.visibility = View.GONE
-        mUndoFab?.visibility = View.GONE
-        mRedoFab?.visibility = View.GONE
-        mDelete?.visibility = View.GONE
-        mHide?.visibility = View.GONE
-        mTouchThroughFab?.visibility = View.GONE
-        mExits?.visibility = View.GONE
+
+        fabItems.clear()
+        fabItems.addAll(loadFabOrder().toMutableList())
+        refreshFabItems()
+        setupFabRecyclerView()
         isAllFabsVisible = false
 
         fab_close = AnimationUtils.loadAnimation(applicationContext, R.anim.fab_close);
@@ -178,19 +171,11 @@ class DrawTestService : Service() {
         fab_clock = AnimationUtils.loadAnimation(applicationContext, R.anim.fab_rotate_click);
         fab_anticlock = AnimationUtils.loadAnimation(applicationContext, R.anim.fab_antiblock);
 
-        //   mAddFab!!.shrink()
-        drawingView?.setSizeForBrush(20.toFloat())
         val desiredWidth = WindowManager.LayoutParams.WRAP_CONTENT
         val desiredHeight = WindowManager.LayoutParams.WRAP_CONTENT
         Log.e("aaaa11111", desiredWidth.toString())
         Log.e("aaaa11111weight", desiredHeight.toString())
 
-        var window = getSystemService(WINDOW_SERVICE) as WindowManager
-        val displayMetrics = window?.currentWindowMetrics?.bounds
-        // sharedPreferences already initialized above
-
-        val fullWidth = displayMetrics?.width()
-        val fullHeight = displayMetrics?.height()
         val params = WindowManager.LayoutParams(
             desiredWidth,
             desiredHeight,
@@ -202,335 +187,357 @@ class DrawTestService : Service() {
         params.x = 0 // Left offset
         params.y = 0 // Top offset
         mAddFab!!.setOnClickListener {
+            if (isDraggingOverlay) {
+                return@setOnClickListener
+            }
             isAllFabsVisible = if (!isAllFabsVisible!!) {
-
-                mPickColorFab!!.show()
-                mPenFab!!.show()
-                mPickSharpFab!!.show()
-                mEarseFab!!.show()
-                mUndoFab!!.show()
-                mRedoFab!!.show()
-                mDelete!!.show()
-                mHide!!.show()
-                mTouchThroughFab!!.show()
-                mExits!!.show()
-                mPickColorFab?.startAnimation(fab_open);
-                mPenFab?.startAnimation(fab_open);
-                mAddFab?.startAnimation(fab_anticlock);
-                mPickSharpFab?.startAnimation(fab_open);
-                mEarseFab?.startAnimation(fab_open);
-                mUndoFab?.startAnimation(fab_open);
-                mRedoFab?.startAnimation(fab_open);
-                mDelete?.startAnimation(fab_open);
-                mHide?.startAnimation(fab_open);
-                mTouchThroughFab?.startAnimation(fab_open);
-                mExits?.startAnimation(fab_open);
-                // Now extend the parent FAB, as
-                // user clicks on the shrinked
-                // parent FAB
-                //       mAddFab!!.extend()
-
-                // make the boolean variable true as
-                // we have set the sub FABs
-                // visibility to GONE
+                mAddFab?.startAnimation(fab_anticlock)
+                toolbarDivider?.visibility = View.VISIBLE
+                fabRecyclerView?.visibility = View.VISIBLE
+                updateToolbarLayout()
+                maybeShowReorderHint()
                 true
             } else {
-
-                mPenFab!!.hide()
-                mPickColorFab!!.hide()
-                mPickSharpFab!!.hide()
-                mEarseFab!!.hide()
-                mUndoFab!!.hide()
-                mRedoFab!!.hide()
-                mDelete!!.hide()
-                mHide!!.hide()
-                mTouchThroughFab!!.hide()
-                mExits!!.hide()
-                mPenFab?.startAnimation(fab_close)
-                mPickColorFab?.startAnimation(fab_close)
                 mAddFab?.startAnimation(fab_clock)
-                mPickSharpFab?.startAnimation(fab_close)
-                mEarseFab?.startAnimation(fab_close)
-                mUndoFab?.startAnimation(fab_close)
-                mRedoFab?.startAnimation(fab_close)
-                mDelete?.startAnimation(fab_close)
-                mHide?.startAnimation(fab_close)
-                mTouchThroughFab?.startAnimation(fab_close)
-                mExits?.startAnimation(fab_close)
-
+                toolbarDivider?.visibility = View.GONE
+                fabRecyclerView?.visibility = View.GONE
                 false
             }
         }
-
-        mPickColorFab!!.setOnClickListener { v ->
-            // Save current drawing mode before opening color picker
-            // Determine current mode: 4 = pen, 5 = erase, 2 = circle, 3 = rectangle, 1 = line
-            var currentMode = 4 // default to pen
-            if (isPen) {
-                currentMode = 4
-            } else if (isChooseErase) {
-                currentMode = 5
-            } else if (isChooseShape) {
-                currentMode = sharedPreferences!!.getInt("shapeType", 2)
-            }
-            editor?.putInt("lastDrawingMode", currentMode)
-            editor?.commit()
-            
-            val intent = Intent("action.hideDraw")
-          //  hideDraw = true
-            intent.putExtra("hideDraw", true)
-            sendBroadcast(intent)
-            val colorPickerIntent = Intent(this, ColorPickerActivity::class.java)
-            colorPickerIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(colorPickerIntent)
-
-//            ColorPickerDialog
-//                .Builder(this)        				// Pass Activity Instance
-//                .setTitle("Pick Theme")           	// Default "Choose Color"
-//                .setColorShape(ColorShape.SQAURE)   // Default ColorShape.CIRCLE
-//                .setDefaultColor(mDefaultColor)     // Pass Default Color
-//                .setColorListener { color, colorHex ->
-//                    // Handle Color Selection
-//                }
-//                .show()
-//            Color.Builder(this).show()
-//            ColorPickerView.Builder(this)
-        }
-
-//        mPickColorFab!!.setOnClickListener { v ->
-//            ColorPickerPopup.Builder(this@DrawTestService).initialColor(
-//                Color.RED
-//            )
-//                .enableBrightness(
-//                    true
-//                ) // enable color brightness
-//                // slider or not
-//                .enableAlpha(
-//                    true
-//                ) // enable color alpha
-//                // changer on slider or
-//                // not
-//                .okTitle(
-//                    "Choose"
-//                ) // this is top right
-//                // Choose button
-//                .cancelTitle(
-//                    "Cancel"
-//                ) // this is top left
-//                // Cancel button which
-//                // closes the
-//                .showIndicator(
-//                    true
-//                ) // this is the small box
-//                .build()
-//                .show(
-//                    v,
-//                    object : ColorPickerPopup.ColorPickerObserver() {
-//                        override fun onColorPicked(color: Int) {
-//                            val intent = Intent("action.PickColor")
-//                            intent.putExtra("pickColor", color)
-//                            sendBroadcast(intent)
-//
-//                            //    mDefaultColor = color
-//
-//                            //       mColorPreview.setBackgroundColor(mDefaultColor)
-//                        }
-//                    })
-//        }
-        mEarseFab!!.setOnClickListener {
-            showToast(this, "Eraser Clicked")
-            disableTouchThroughIfNeeded()
-            intent.putExtra("pickShape", 5)
-            sendBroadcast(intent)
-            if (isChooseErase) {
-                showEraseSizeChooserDialog()
-            }
-            isChooseErase = true
-            isPen = false
-
-        }
-
-        // below is the sample action to handle add alarm
-        // FAB. Here it shows simple Toast msg The Toast
-        // will be shown only when they are visible and only
-        // when user clicks on them
-        mExits!!.setOnClickListener {
-
-            val intentHide = Intent("action.hideDraw")
-           // hideDraw = true
-            intentHide.putExtra("hideDraw", true)
-            sendBroadcast(intentHide)
-
-
-            val intent = Intent(this, MainActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-            startActivity(intent)
-        }
-
-        mPenFab!!.setOnClickListener {
-            showToast(this, "Draw Pen Clicked")
-            disableTouchThroughIfNeeded()
-
-                val intentHide = Intent("action.hideDraw")
-            //    hideDraw = false
-                intentHide.putExtra("hideDraw", false)
-                sendBroadcast(intentHide)
-
-
-            intent.putExtra("pickShape", 4)
-            sendBroadcast(intent)
-            if (isChooseShape) {
-                mPickSharpFab!!.background.setTint(ContextCompat.getColor(this, R.color.pink))
-                isChooseShape = false
-            }
-            isChooseErase = false
-            if (isPen) {
-                showBrushSizeChooserDialog()
-            }
-            isPen = true
-        }
-        mDelete!!.setOnClickListener {
-            showToast(this, "Draw Delete Clicked")
-
-            val intentSizeShape = Intent("action.delete")
-            sendBroadcast(intentSizeShape)
-        }
-        mPickSharpFab!!.setOnClickListener {
-            showToast(this, "Pick Share Clicked")
-            disableTouchThroughIfNeeded()
-
-            var savedSeekBarValue: Int = sharedPreferences!!.getInt("seekBarValueShape", 10)
-            val intentSizeShape = Intent("action.setSizeShape")
-            intentSizeShape.putExtra("setSizeShape", savedSeekBarValue)
-            sendBroadcast(intentSizeShape)
-            mPickSharpFab!!.background.setTint(ContextCompat.getColor(this, R.color.red))
-
-            intent.putExtra("pickShape", 2)
-            sendBroadcast(intent)
-            showShapeChooserDialog()
-            isChooseErase = false
-            isChooseShape = true
-            isPen = false
-
-
-        }
-        mHide!!.setOnClickListener {
-            println("check print")
-            if (viewModel.hideDraw.value == true) {
-                showToast(this, "Show Pen Clicked")
-
-                mHide!!.setImageResource(R.drawable.view)
-
-            } else {
-                showToast(this, "Hide Pen Clicked")
-                mHide!!.setImageResource(R.drawable.hide)
-
-
-            }
-
-            // This is for undo recent stroke.
-            val intent = Intent("action.hideDraw")
-            viewModel.setHideDraw()
-            intent.putExtra("hideDraw", viewModel.hideDraw.value)
-            sendBroadcast(intent)
-            // mFloatingView?.visibility = View.INVISIBLE
-            //    drawingView?.onClickUndo()
-        }
-
-        mTouchThroughFab!!.setOnClickListener {
-            isTouchThroughEnabled = !isTouchThroughEnabled
-            sharedPreferences?.edit()?.putBoolean("touchThroughEnabled", isTouchThroughEnabled)?.commit()
-            updateTouchThroughFabState()
-
-            val intentTouchThrough = Intent("action.touchThrough")
-            intentTouchThrough.putExtra("touchThrough", isTouchThroughEnabled)
-            sendBroadcast(intentTouchThrough)
-
-            val message = if (isTouchThroughEnabled) {
-                "Touch-through enabled"
-            } else {
-                "Touch-through disabled"
-            }
-            showToast(this, message)
-        }
-
-
         mWindowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        mUndoFab!!.setOnClickListener {
-            showToast(this, "Undo Clicked")
+        attachParentFabDrag(params)
+        updateToolbarLayout()
+        mWindowManager!!.addView(mFloatingView, params)
+    }
 
-            val intent = Intent("action.undo")
-            intent.putExtra("undo", true)
-            sendBroadcast(intent)
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        updateToolbarLayout()
+    }
 
+    private fun setupFabRecyclerView() {
+        val recyclerView = fabRecyclerView ?: return
+        fabAdapter = FabAdapter(
+            context = this,
+            items = fabItems,
+            onItemClick = ::handleFabClick,
+            onStartDrag = { holder -> itemTouchHelper?.startDrag(holder) }
+        )
+        fabTouchCallback = FabItemTouchCallback(fabAdapter!!) { currentToolbarOrientation() }.apply {
+            onOrderChanged = { items -> saveFabOrder(items) }
         }
-        mRedoFab!!.setOnClickListener {
-            showToast(this, "Redo Clicked")
+        itemTouchHelper = ItemTouchHelper(fabTouchCallback!!)
+        recyclerView.adapter = fabAdapter
+        recyclerView.layoutManager = LinearLayoutManager(this, currentToolbarOrientation(), false)
+        itemTouchHelper?.attachToRecyclerView(recyclerView)
+    }
 
-            val intent = Intent("action.redo")
-            intent.putExtra("redo", true)
-            sendBroadcast(intent)
+    private fun currentToolbarOrientation(): Int {
+        return RecyclerView.VERTICAL
+    }
 
+    private fun updateToolbarLayout() {
+        val isLandscape = isLandscapeLayout()
+        toolbarContainer?.orientation = LinearLayout.VERTICAL
+        toolbarContainer?.gravity = Gravity.CENTER_HORIZONTAL
+
+        val addFabLayoutParams = mAddFab?.layoutParams as? LinearLayout.LayoutParams
+        if (addFabLayoutParams != null) {
+            addFabLayoutParams.marginEnd = 0
+            addFabLayoutParams.bottomMargin = dpToPx(8)
+            mAddFab?.layoutParams = addFabLayoutParams
         }
-        mAddFab!!.setOnLongClickListener {
-            isDragMode = true
+
+        val dividerLayoutParams = toolbarDivider?.layoutParams as? LinearLayout.LayoutParams
+        if (dividerLayoutParams != null) {
+            dividerLayoutParams.width = dpToPx(28)
+            dividerLayoutParams.height = dpToPx(1)
+            dividerLayoutParams.marginEnd = 0
+            dividerLayoutParams.bottomMargin = dpToPx(8)
+            toolbarDivider?.layoutParams = dividerLayoutParams
+        }
+
+        val recyclerView = fabRecyclerView ?: return
+        val currentManager = recyclerView.layoutManager as? LinearLayoutManager
+        val targetOrientation = RecyclerView.VERTICAL
+        if (currentManager == null || currentManager.orientation != targetOrientation) {
+            recyclerView.layoutManager = LinearLayoutManager(this, targetOrientation, false)
+        }
+
+        val metricsBounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            mWindowManager?.currentWindowMetrics?.bounds
+        } else {
+            null
+        }
+        val screenWidth = metricsBounds?.width() ?: resources.displayMetrics.widthPixels
+        val screenHeight = metricsBounds?.height() ?: resources.displayMetrics.heightPixels
+        val layoutParams = recyclerView.layoutParams
+        if (isLandscape) {
+            layoutParams.width = LinearLayout.LayoutParams.WRAP_CONTENT
+            layoutParams.height = (screenHeight * 0.55f).toInt().coerceAtLeast(dpToPx(220))
+        } else {
+            layoutParams.width = LinearLayout.LayoutParams.WRAP_CONTENT
+            layoutParams.height = (screenHeight * 0.6f).toInt().coerceAtLeast(dpToPx(220))
+        }
+        recyclerView.layoutParams = layoutParams
+    }
+
+    private fun attachParentFabDrag(params: WindowManager.LayoutParams) {
+        mAddFab?.setOnLongClickListener {
+            isDraggingOverlay = true
             isMoving = false
-            val scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.scale_up)
-            mAddFab!!.startAnimation(scaleAnimation)
+            initialOverlayX = params.x
+            initialOverlayY = params.y
+            initialTouchX = lastDownTouchX
+            initialTouchY = lastDownTouchY
+            mAddFab?.startAnimation(AnimationUtils.loadAnimation(this, R.anim.scale_up))
             true
         }
-        mAddFab!!.setOnTouchListener { _, event ->
-            if (!isDragMode) {
+
+        mAddFab?.setOnTouchListener { _, event ->
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                lastDownTouchX = event.rawX
+                lastDownTouchY = event.rawY
+            }
+
+            if (!isDraggingOverlay) {
                 return@setOnTouchListener false
             }
 
-            overlayScrollView?.requestDisallowInterceptTouchEvent(true)
-            mFloatingView?.parent?.requestDisallowInterceptTouchEvent(true)
-
             when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    true
+                }
+
                 MotionEvent.ACTION_MOVE -> {
-                    if (!isMoving) {
-                        initialX = params.x.toFloat()
-                        initialY = params.y.toFloat()
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        isMoving = true
-                    }
-
-                    val offsetX = event.rawX - initialTouchX
-                    val offsetY = event.rawY - initialTouchY
-
-                    params.x = (initialX + offsetX).toInt()
-                    params.y = (initialY + offsetY).toInt()
-                    mWindowManager!!.updateViewLayout(mFloatingView, params)
+                    isMoving = true
+                    val dx = (event.rawX - initialTouchX).toInt()
+                    val dy = (event.rawY - initialTouchY).toInt()
+                    params.x = initialOverlayX + dx
+                    params.y = initialOverlayY + dy
+                    mWindowManager?.updateViewLayout(mFloatingView, params)
                     true
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    val scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.scale_down)
-                    mAddFab!!.startAnimation(scaleAnimation)
-                    if (isMoving) {
-                        if (event.rawX < fullWidth!! / 2) {
-                            params.x = 10
-                        } else {
-                            params.x = (fullWidth - mFloatingView!!.width).coerceAtLeast(10)
-                        }
-                        val animation = AnimationUtils.loadAnimation(this, R.anim.slide_animation)
-                        mFloatingView!!.startAnimation(animation)
-                        mWindowManager!!.updateViewLayout(mFloatingView, params)
-                    }
-                    overlayScrollView?.requestDisallowInterceptTouchEvent(false)
-                    mFloatingView?.parent?.requestDisallowInterceptTouchEvent(false)
+                    mAddFab?.startAnimation(AnimationUtils.loadAnimation(this, R.anim.scale_down))
+                    isDraggingOverlay = false
                     isMoving = false
-                    isDragMode = false
                     true
                 }
 
                 else -> true
             }
         }
-        mWindowManager!!.addView(mFloatingView, params)
+    }
+
+    private fun isLandscapeLayout(): Boolean {
+        val bounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            mWindowManager?.currentWindowMetrics?.bounds
+        } else {
+            null
+        }
+        val width = bounds?.width() ?: resources.displayMetrics.widthPixels
+        val height = bounds?.height() ?: resources.displayMetrics.heightPixels
+        return width > height
+    }
+
+    private fun handleFabClick(item: FabItem) {
+        when (item.id) {
+            FAB_ID_PEN -> handlePenClick()
+            FAB_ID_COLOR -> handleColorClick()
+            FAB_ID_SHAPE -> handleShapeClick()
+            FAB_ID_ERASE -> handleEraseClick()
+            FAB_ID_UNDO -> {
+                showToast(this, "Undo Clicked")
+                sendBroadcast(Intent("action.undo").putExtra("undo", true))
+            }
+            FAB_ID_REDO -> {
+                showToast(this, "Redo Clicked")
+                sendBroadcast(Intent("action.redo").putExtra("redo", true))
+            }
+            FAB_ID_DELETE -> {
+                showToast(this, "Draw Delete Clicked")
+                sendBroadcast(Intent("action.delete"))
+            }
+            FAB_ID_HIDE -> handleHideClick()
+            FAB_ID_TOUCH -> handleTouchThroughClick()
+            FAB_ID_EXIT -> handleExitClick()
+        }
+    }
+
+    private fun handleColorClick() {
+        var currentMode = 4
+        if (isPen) {
+            currentMode = 4
+        } else if (isChooseErase) {
+            currentMode = 5
+        } else if (isChooseShape) {
+            currentMode = sharedPreferences!!.getInt("shapeType", 2)
+        }
+        editor?.putInt("lastDrawingMode", currentMode)
+        editor?.commit()
+
+        sendBroadcast(Intent("action.hideDraw").putExtra("hideDraw", true))
+        val colorPickerIntent = Intent(this, ColorPickerActivity::class.java)
+        colorPickerIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(colorPickerIntent)
+    }
+
+    private fun handleEraseClick() {
+        showToast(this, "Eraser Clicked")
+        disableTouchThroughIfNeeded()
+        intent.putExtra("pickShape", 5)
+        sendBroadcast(intent)
+        if (isChooseErase) {
+            showEraseSizeChooserDialog()
+        }
+        isChooseErase = true
+        isPen = false
+    }
+
+    private fun handleExitClick() {
+        sendBroadcast(Intent("action.hideDraw").putExtra("hideDraw", true))
+        val intent = Intent(this, MainActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+    }
+
+    private fun handlePenClick() {
+        showToast(this, "Draw Pen Clicked")
+        disableTouchThroughIfNeeded()
+        sendBroadcast(Intent("action.hideDraw").putExtra("hideDraw", false))
+        intent.putExtra("pickShape", 4)
+        sendBroadcast(intent)
+        isChooseErase = false
+        if (isPen) {
+            showBrushSizeChooserDialog()
+        }
+        isChooseShape = false
+        isPen = true
+    }
+
+    private fun handleShapeClick() {
+        showToast(this, "Pick Share Clicked")
+        disableTouchThroughIfNeeded()
+        val savedSeekBarValue: Int = sharedPreferences!!.getInt("seekBarValueShape", 10)
+        sendBroadcast(Intent("action.setSizeShape").putExtra("setSizeShape", savedSeekBarValue))
+        intent.putExtra("pickShape", 2)
+        sendBroadcast(intent)
+        showShapeChooserDialog()
+        isChooseErase = false
+        isChooseShape = true
+        isPen = false
+    }
+
+    private fun handleHideClick() {
+        val hideIntent = Intent("action.hideDraw")
+        viewModel.setHideDraw()
+        hideIntent.putExtra("hideDraw", viewModel.hideDraw.value)
+        sendBroadcast(hideIntent)
+
+        val isHidden = viewModel.hideDraw.value == true
+        showToast(this, if (isHidden) "Hide Pen Clicked" else "Show Pen Clicked")
+        findFabItem(FAB_ID_HIDE)?.iconRes = if (isHidden) R.drawable.hide else R.drawable.view
+        fabAdapter?.notifyItemChangedById(FAB_ID_HIDE)
+    }
+
+    private fun handleTouchThroughClick() {
+        isTouchThroughEnabled = !isTouchThroughEnabled
+        sharedPreferences?.edit()?.putBoolean("touchThroughEnabled", isTouchThroughEnabled)?.commit()
+        updateTouchThroughFabState()
+        sendBroadcast(Intent("action.touchThrough").putExtra("touchThrough", isTouchThroughEnabled))
+        showToast(this, if (isTouchThroughEnabled) "Touch-through enabled" else "Touch-through disabled")
+    }
+
+    private fun loadFabOrder(): List<FabItem> {
+        val defaultItems = defaultFabItems()
+        val savedOrder = sharedPreferences!!.getString("fabOrder", null) ?: return defaultItems
+        val orderedIds = savedOrder.split(",").filter { it.isNotBlank() }
+        val orderedItems = orderedIds.mapNotNull { id -> defaultItems.find { it.id == id } }.toMutableList()
+        defaultItems.forEach { item ->
+            if (orderedItems.none { it.id == item.id }) {
+                orderedItems.add(item)
+            }
+        }
+        return orderedItems
+    }
+
+    private fun saveFabOrder(items: List<FabItem>) {
+        val orderString = items.joinToString(",") { it.id }
+        editor?.putString("fabOrder", orderString)
+        editor?.apply()
+    }
+
+    private fun refreshFabItems() {
+        findFabItem(FAB_ID_HIDE)?.apply {
+            iconRes = if (viewModel.hideDraw.value == true) R.drawable.hide else R.drawable.view
+            isActive = viewModel.hideDraw.value == true
+        }
+        findFabItem(FAB_ID_TOUCH)?.isActive = isTouchThroughEnabled
+    }
+
+    private fun defaultFabItems(): List<FabItem> {
+        return listOf(
+            FabItem(FAB_ID_PEN, R.drawable.ic_brush, R.string.overlay_pen),
+            FabItem(FAB_ID_COLOR, R.drawable.color_palette, R.string.overlay_color),
+            FabItem(FAB_ID_SHAPE, R.drawable.interests, R.string.overlay_shape),
+            FabItem(FAB_ID_ERASE, R.drawable.eraser, R.string.overlay_eraser),
+            FabItem(FAB_ID_UNDO, R.drawable.undo, R.string.overlay_undo),
+            FabItem(FAB_ID_REDO, R.drawable.redo, R.string.overlay_redo),
+            FabItem(FAB_ID_DELETE, R.drawable.bin, R.string.overlay_delete),
+            FabItem(FAB_ID_HIDE, R.drawable.view, R.string.overlay_hide),
+            FabItem(FAB_ID_TOUCH, R.drawable.install_desktop, R.string.overlay_touch_through),
+            FabItem(FAB_ID_EXIT, R.drawable.logout, R.string.overlay_exit)
+        )
+    }
+
+    private fun findFabItem(id: String): FabItem? = fabItems.find { it.id == id }
+
+    private fun dpToPx(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private fun maybeShowReorderHint() {
+        val prefs = sharedPreferences ?: return
+        if (prefs.getBoolean("fab_reorder_hint_shown_v2", false)) {
+            return
+        }
+        showToast(this, "New feature: Long press a tool to move it.", Toast.LENGTH_LONG)
+        prefs.edit().putBoolean("fab_reorder_hint_shown_v2", true).apply()
+    }
+
+    private fun applyFabSize(size: Int) {
+        val addFab = mAddFab ?: return
+        when (size) {
+            0 -> {
+                addFab.size = FloatingActionButton.SIZE_MINI
+                addFab.customSize = 0
+            }
+            2 -> {
+                addFab.size = FloatingActionButton.SIZE_NORMAL
+                addFab.customSize = dpToPx(64)
+            }
+            else -> {
+                addFab.size = FloatingActionButton.SIZE_NORMAL
+                addFab.customSize = 0
+            }
+        }
+        fabAdapter?.updateFabSize(size)
+    }
+
+    private fun disableTouchThroughIfNeeded() {
+        if (!isTouchThroughEnabled) {
+            return
+        }
+
+        isTouchThroughEnabled = false
+        sharedPreferences?.edit()?.putBoolean("touchThroughEnabled", false)?.commit()
+        updateTouchThroughFabState()
+        sendBroadcast(Intent("action.touchThrough").putExtra("touchThrough", false))
+    }
+
+    private fun updateTouchThroughFabState() {
+        findFabItem(FAB_ID_TOUCH)?.isActive = isTouchThroughEnabled
+        fabAdapter?.notifyItemChangedById(FAB_ID_TOUCH)
     }
 
     private fun showBrushSizeChooserDialog() {
@@ -800,12 +807,12 @@ class DrawTestService : Service() {
 
 }
 
-fun showToast(context: Context, message: String) {
+fun showToast(context: Context, message: String, duration: Int = Toast.LENGTH_SHORT) {
     // Use Handler to ensure toast is shown on main thread
     // For overlay services, we need to use application context
     try {
         Handler(Looper.getMainLooper()).post {
-            val toast = Toast.makeText(context.applicationContext, message, Toast.LENGTH_SHORT)
+            val toast = Toast.makeText(context.applicationContext, message, duration)
             toast.setGravity(Gravity.CENTER, 0, 0)
             toast.show()
         }
@@ -813,64 +820,4 @@ fun showToast(context: Context, message: String) {
         // Fallback if toast fails
         Log.e("Toast", "Failed to show toast: ${e.message}")
     }
-}
-
-fun DrawTestService.applyFabSize(size: Int) {
-    val fabSizeValue = when (size) {
-        0 -> com.google.android.material.floatingactionbutton.FloatingActionButton.SIZE_MINI
-        1 -> com.google.android.material.floatingactionbutton.FloatingActionButton.SIZE_NORMAL
-        2 -> com.google.android.material.floatingactionbutton.FloatingActionButton.SIZE_NORMAL // Use normal for large
-        else -> com.google.android.material.floatingactionbutton.FloatingActionButton.SIZE_NORMAL
-    }
-    
-    // Set size programmatically for all FABs
-    val fabList = listOf(mAddFab, mPenFab, mPickColorFab, mPickSharpFab, mEarseFab, 
-        mUndoFab, mRedoFab, mDelete, mHide, mTouchThroughFab, mExits)
-    
-    fabList.forEach { fab ->
-        fab?.size = fabSizeValue
-    }
-    
-    // For large size (2), we need to use custom size
-    if (size == 2) {
-        val largeSizeDp = 64
-        val largeSizePx = (largeSizeDp * resources.displayMetrics.density).toInt()
-        fabList.forEach { fab ->
-            fab?.layoutParams?.width = largeSizePx
-            fab?.layoutParams?.height = largeSizePx
-            fab?.requestLayout()
-        }
-    }
-}
-
-private fun DrawTestService.disableTouchThroughIfNeeded() {
-    if (!isTouchThroughEnabled) {
-        return
-    }
-
-    isTouchThroughEnabled = false
-    sharedPreferences?.edit()?.putBoolean("touchThroughEnabled", false)?.commit()
-    updateTouchThroughFabState()
-
-    val intentTouchThrough = Intent("action.touchThrough")
-    intentTouchThrough.putExtra("touchThrough", false)
-    sendBroadcast(intentTouchThrough)
-}
-
-private fun DrawTestService.updateTouchThroughFabState() {
-    val backgroundColor = if (isTouchThroughEnabled) {
-        R.color.home_primary
-    } else {
-        R.color.home_panel_background
-    }
-    val iconColor = if (isTouchThroughEnabled) {
-        R.color.white
-    } else {
-        R.color.home_primary
-    }
-
-    mTouchThroughFab?.backgroundTintList =
-        ContextCompat.getColorStateList(this, backgroundColor)
-    mTouchThroughFab?.imageTintList =
-        ContextCompat.getColorStateList(this, iconColor)
 }
