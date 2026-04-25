@@ -34,6 +34,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -62,6 +63,7 @@ class DrawTestService : Service() {
     var mHide: FloatingActionButton? = null
     var mTouchThroughFab: FloatingActionButton? = null
     var mExits: FloatingActionButton? = null
+    private var overlayScrollView: NestedScrollView? = null
     var isMoving = false
     var isChooseShape = false
     var isChooseErase = false
@@ -76,6 +78,7 @@ class DrawTestService : Service() {
     private var initialY: Float = 0.0f
     private var initialTouchX: Float = 0.0f
     private var initialTouchY: Float = 0.0f
+    private var isDragMode = false
     private var mImageButtonCurrentPaint: ImageButton? =
         null // A variable for current color is picked from color pallet.
     var sharedPreferences: SharedPreferences? = null
@@ -136,6 +139,7 @@ class DrawTestService : Service() {
         
         mFloatingView = LayoutInflater.from(this).inflate(R.layout.floating_button, null)
         drawingView = mFloatingView!!.findViewById(R.id.drawing_view)
+        overlayScrollView = mFloatingView!!.findViewById(R.id.overlay_scroll)
         mAddFab = mFloatingView!!.findViewById(R.id.add_fab)
 
 
@@ -470,55 +474,61 @@ class DrawTestService : Service() {
 
         }
         mAddFab!!.setOnLongClickListener {
-            val gestureListener = View.OnTouchListener { view, event ->
-                when (event.action) {
-                    MotionEvent.ACTION_MOVE -> {
-                        if (!isMoving) {
-                            initialX = view.x
-                            initialY = view.y
-                            initialTouchX = event.rawX
-                            initialTouchY = event.rawY
-                            isMoving = true
-                            // Apply the animation for scale-up
-                            val scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.scale_up)
-                            mAddFab!!.startAnimation(scaleAnimation)
-                        }
-                        val offsetX = event.rawX - initialTouchX
-                        val offsetY = event.rawY - initialTouchY
+            isDragMode = true
+            isMoving = false
+            val scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.scale_up)
+            mAddFab!!.startAnimation(scaleAnimation)
+            true
+        }
+        mAddFab!!.setOnTouchListener { _, event ->
+            if (!isDragMode) {
+                return@setOnTouchListener false
+            }
 
-                        params.x = (initialX + offsetX).toInt()
-                        params.y = (initialY + offsetY).toInt()
-                        val animation = AnimationUtils.loadAnimation(this, R.anim.slide_animation)
-                        mFloatingView!!.startAnimation(animation)
-                        mWindowManager!!.updateViewLayout(mFloatingView, params)
+            overlayScrollView?.requestDisallowInterceptTouchEvent(true)
+            mFloatingView?.parent?.requestDisallowInterceptTouchEvent(true)
+
+            when (event.actionMasked) {
+                MotionEvent.ACTION_MOVE -> {
+                    if (!isMoving) {
+                        initialX = params.x.toFloat()
+                        initialY = params.y.toFloat()
+                        initialTouchX = event.rawX
+                        initialTouchY = event.rawY
+                        isMoving = true
                     }
 
-                    MotionEvent.ACTION_UP -> {
-                        // Apply the animation for scale-down
-                        val scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.scale_down)
-                        mAddFab!!.startAnimation(scaleAnimation)
+                    val offsetX = event.rawX - initialTouchX
+                    val offsetY = event.rawY - initialTouchY
+
+                    params.x = (initialX + offsetX).toInt()
+                    params.y = (initialY + offsetY).toInt()
+                    mWindowManager!!.updateViewLayout(mFloatingView, params)
+                    true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val scaleAnimation = AnimationUtils.loadAnimation(this, R.anim.scale_down)
+                    mAddFab!!.startAnimation(scaleAnimation)
+                    if (isMoving) {
                         if (event.rawX < fullWidth!! / 2) {
                             params.x = 10
                         } else {
-                            params.x = fullWidth!!
+                            params.x = (fullWidth - mFloatingView!!.width).coerceAtLeast(10)
                         }
                         val animation = AnimationUtils.loadAnimation(this, R.anim.slide_animation)
                         mFloatingView!!.startAnimation(animation)
                         mWindowManager!!.updateViewLayout(mFloatingView, params)
-                        mAddFab!!.setOnTouchListener(null)
                     }
-
-                    else -> {
-                        // Reset the flag for other touch events
-                        isMoving = false
-                    }
+                    overlayScrollView?.requestDisallowInterceptTouchEvent(false)
+                    mFloatingView?.parent?.requestDisallowInterceptTouchEvent(false)
+                    isMoving = false
+                    isDragMode = false
+                    true
                 }
-                true
-            }
 
-            // Attach the gestureListener to handle touch movement
-            mAddFab!!.setOnTouchListener(gestureListener)
-            true
+                else -> true
+            }
         }
         mWindowManager!!.addView(mFloatingView, params)
     }
